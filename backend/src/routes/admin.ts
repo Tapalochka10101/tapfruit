@@ -54,7 +54,7 @@ adminRouter.post('/grant-by-username', async (req, res) => {
 
   const updated = await prisma.user.update({
     where: { id: user.id },
-    data: { subscriptionUntil: until },
+    data: { subscriptionUntil: until, lastChargeAt: new Date() },
   });
 
   res.json({

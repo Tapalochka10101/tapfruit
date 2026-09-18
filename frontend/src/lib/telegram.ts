@@ -1,40 +1,29 @@
-type TgWebApp = {
-  ready: () => void;
-  expand: () => void;
-  initData: string;
-  colorScheme?: 'light' | 'dark';
-  HapticFeedback?: {
-    impactOccurred: (s: 'light' | 'medium' | 'heavy') => void;
-    notificationOccurred: (t: 'error' | 'success' | 'warning') => void;
-  };
-  setHeaderColor?: (c: string) => void;
-  disableVerticalSwipes?: () => void;
-};
+import WebApp from '@twa-dev/sdk';
 
-const w = window as any;
-export const tg: TgWebApp = w.Telegram?.WebApp ?? {
-  ready: () => {},
-  expand: () => {},
-  initData: '',
-};
+WebApp.ready();
+WebApp.expand();
+try { WebApp.requestFullscreen?.(); } catch { /* older clients */ }
+WebApp.disableVerticalSwipes?.();
+WebApp.setHeaderColor?.('#ffffff');
 
-tg.ready?.();
-tg.expand?.();
-try { tg.disableVerticalSwipes?.(); } catch {}
-tg.setHeaderColor?.('#ffffff');
-
-export const initData = tg.initData || '';
+export const tg = WebApp;
+export const initData = WebApp.initData;
 
 export function applyTheme(mode: 'light' | 'dark' | 'tg') {
   const html = document.documentElement;
-  const effective = mode === 'tg' ? (tg.colorScheme ?? 'light') : mode;
+  const effective = mode === 'tg' ? (WebApp.colorScheme ?? 'light') : mode;
   html.dataset.theme = effective;
-  tg.setHeaderColor?.(effective === 'dark' ? '#1c1c1e' : '#ffffff');
+  WebApp.setHeaderColor?.(effective === 'dark' ? '#1c1c1e' : '#ffffff');
 }
-/** Возвращает start_param из initData (то, что передали в ?startapp=). */
+
 export function getStartParam(): string | null {
   try {
-    return window.Telegram?.WebApp?.initDataUnsafe?.start_param ?? null;
+    const fromSdk = WebApp.initDataUnsafe?.start_param;
+    if (fromSdk) return fromSdk;
+  } catch { /* ignore */ }
+  try {
+    const url = new URL(window.location.href);
+    return url.searchParams.get('startapp') || url.searchParams.get('topup');
   } catch {
     return null;
   }
