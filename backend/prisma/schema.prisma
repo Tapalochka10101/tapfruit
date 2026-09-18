@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String    @id @default(cuid())
+  tgId                BigInt    @unique
+  username            String?
+  firstName           String?
+  balance             BigInt    @default(0)
+  chips               BigInt    @default(0)
+  totalTaps           BigInt    @default(0)
+  upgradeLevel        Int       @default(0)
+  maxUpgradeLevel     Int       @default(0)
+  activeSkin          String?
+  generators          String    @default("[]")
+  lastPassiveAt       DateTime  @default(now())
+
+  // 🤝 Рефералка
+  referrerId          String?
+  referralEarnings    BigInt    @default(0)
+  referredUsers       User[]    @relation("Referrals")
+  referrer            User?     @relation("Referrals", fields: [referrerId], references: [id])
+
+  // 🎁 Промокоды
+  usedPromos          String    @default("[]")
+
+  // 📅 Ежедневный стрик
+  dailyStreak         Int       @default(0)   // сколько дней подряд
+  lastDailyClaim      DateTime?
+
+  // 🎰 Кейсы
+  totalCasesOpened    Int       @default(0)
+
+  bananaBoostUntil    DateTime?
+  bananaCooldownUntil DateTime?
+  tapSeed             BigInt    @default(1)
+  tapIndex            BigInt    @default(0)
+  lastBatchAt         DateTime?
+  flagged             Boolean   @default(false)
+  settings            String    @default("{}")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  purchases Purchase[]
+  tapLogs   TapLog[]
+  payments  Payment[]
+
+  @@index([tgId])
+  @@index([referrerId])
+}
+
+model Purchase {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemType  String
+  itemId    String
+  price     BigInt
+  createdAt DateTime @default(now())
+
+  @@unique([userId, itemType, itemId])
+  @@index([userId])
+}
+
+model TapLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  count     Int
+  crits     Int
+  cps       Float
+  flagged   Boolean  @default(false)
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Payment {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountRub  Int
+  tapsAmount BigInt
+  status     String    @default("pending")
+  provider   String    @default("sbp_stub")
+  externalId String?
+  createdAt  DateTime  @default(now())
+  paidAt     DateTime?
+
+  @@index([userId, status])
+}
