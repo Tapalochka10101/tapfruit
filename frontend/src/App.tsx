@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { TopBar } from './components/TopBar';
+import { SubscriptionGate } from './components/SubscriptionGate';
 import { Apple } from './components/Apple';
 import { Particles, type Particle } from './components/Particles';
 import { FloatingTexts, type Floating } from './components/FloatingText';
@@ -24,6 +25,7 @@ let uid = 0;
 
 export default function App() {
   const ready = useGame(s => s.ready);
+  const subscriptionActive = useGame(s => s.subscriptionActive);
   const init = useGame(s => s.init);
   const activeSkin = useGame(s => s.activeSkin);
   const upgradeLevel = useGame(s => s.upgradeLevel);
@@ -95,6 +97,11 @@ export default function App() {
       }, 800);
     }
   }, [ready, seed, upgradeLevel, boostUntil, particlesEnabled, addOptimistic, registerTap, batcher, haptics, play]);
+
+  // 🚪 Если подписка неактивна — показываем гейт вместо игры
+  if (ready && !subscriptionActive) {
+    return <SubscriptionGate />;
+  }
 
   const [shopOpen, setShopOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);

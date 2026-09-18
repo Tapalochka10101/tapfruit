@@ -1,6 +1,10 @@
 import { ENV } from './env.js';
 import './lib/serialize.js';
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PUBLIC_DIR = path.resolve(__dirname, '..', 'public');
 import cors from 'cors';
 import { prisma } from './lib/prisma.js';
 import { authMiddleware } from './middleware/auth.js';
@@ -15,6 +19,7 @@ import { generatorsRouter } from './routes/generators.js';
 import { promosRouter } from './routes/promos.js';
 import { referralsRouter } from './routes/referrals.js';
 import { dailyRouter } from './routes/daily.js';
+import { adminRouter } from './routes/admin.js';
 import { bot, buildReferralLink, botWebhook } from './bot.js';
 
 const app = express();
@@ -22,6 +27,7 @@ app.use(cors());
 app.use(express.json({ limit: '256kb' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+app.get('/admin-panel', (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
 app.post('/telegram/webhook', botWebhook);
 app.post('/api/wallet/webhook', async (_req, res) => { res.json({ ok: true }); });
 
@@ -38,6 +44,7 @@ api.use(generatorsRouter);
 api.use(promosRouter);
 api.use(referralsRouter);
 api.use(dailyRouter);
+api.use('/admin', adminRouter);
 api.get('/referral', (req, res) => { res.json({ url: buildReferralLink(req.tgId!) }); });
 app.use('/api', api);
 

@@ -12,6 +12,7 @@ type State = {
   ready: boolean;
   balanceRub: number;
   subscriptionUntil: number | null;
+  subscriptionActive: boolean;
   balance: number;
   chips: number;
   totalTaps: number;
@@ -51,6 +52,7 @@ export const useGame = create<State>((set) => ({
   ready: false,
   balanceRub: 0,
   subscriptionUntil: null,
+  subscriptionActive: false,
   balance: 0,
   chips: 0,
   totalTaps: 0,
@@ -79,6 +81,7 @@ export const useGame = create<State>((set) => ({
       ready: true,
       balanceRub: Number((u as any).balanceRub ?? 0) / 100,
       subscriptionUntil: (u as any).subscriptionUntil ? Date.parse((u as any).subscriptionUntil) : null,
+      subscriptionActive: Boolean((u as any).subscriptionActive),
       balance: Number(u.balance),
       chips: Number(u.chips ?? 0),
       totalTaps: Number(u.totalTaps),
