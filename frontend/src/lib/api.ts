@@ -1,6 +1,6 @@
 import { initData } from './telegram';
 
-const BASE = '/api';
+const BASE = import.meta.env.VITE_API_URL || 'https://tapfruit-backend.onrender.com/api';
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(BASE + path, {
@@ -34,39 +34,21 @@ export const api = {
   referral: () => req<{ url: string }>('/referral'),
   deposit: (amountRub: number) =>
     req<any>('/wallet/deposit', { method: 'POST', body: JSON.stringify({ amountRub }) }),
-
   buyChips: (taps: number) =>
     req<any>('/minigames/buy-chips', { method: 'POST', body: JSON.stringify({ taps }) }),
   sellChips: (chips: number) =>
     req<any>('/minigames/sell-chips', { method: 'POST', body: JSON.stringify({ chips }) }),
   playMinigame: (gameId: string, bet: number, choice: string) =>
     req<any>('/minigames/play', { method: 'POST', body: JSON.stringify({ gameId, bet, choice }) }),
-
   getGenerators: () => req<any>('/generators'),
   buyGenerator: (generatorId: string) =>
     req<any>('/generators/buy', { method: 'POST', body: JSON.stringify({ generatorId }) }),
   collectPassive: () => req<any>('/generators/collect', { method: 'POST' }),
-
   redeemPromo: (code: string) =>
     req<any>('/promos/redeem', { method: 'POST', body: JSON.stringify({ code }) }),
-
-  getReferrals: () => req<{
-    link: string; referredCount: number; earnings: string; percent: number;
-  }>('/referrals'),
-
-  // 🎰 Кейсы
-  getCases: () => req<any>('/cases'),
-  openCase: (caseId: string) =>
-    req<any>('/cases/open', { method: 'POST', body: JSON.stringify({ caseId }) }),
-
-  // 📅 Ежедневный стрик
-  getDailyStatus: () => req<{
-    canClaim: boolean; currentStreak: number; nextStreak: number;
-    nextReward: string; streakTable: { day: number; reward: string }[];
-  }>('/daily/status'),
-  claimDailyStreak: () => req<{
-    ok: boolean; reward: string; streak: number; balance: string;
-  }>('/daily/claim', { method: 'POST' }),
+  getReferrals: () => req<{ link: string; referredCount: number; earnings: string; percent: number }>('/referrals'),
+  getDailyStatus: () => req<{ canClaim: boolean; currentStreak: number; nextStreak: number; nextReward: string; streakTable: { day: number; reward: string }[] }>('/daily/status'),
+  claimDailyStreak: () => req<{ ok: boolean; reward: string; streak: number; balance: string }>('/daily/claim', { method: 'POST' }),
 };
 
 export type MeResponse = {
@@ -81,7 +63,6 @@ export type MeResponse = {
     referredCount: number;
     dailyStreak: number;
     canClaimDaily: boolean;
-    totalCasesOpened: number;
     lastDailyClaim: string | null; bananaBoostUntil: string | null; bananaCooldownUntil: string | null;
     tapSeed: string; tapIndex: string; settings: Record<string, unknown>;
     createdAt: string; now: number;

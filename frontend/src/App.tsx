@@ -10,7 +10,6 @@ import { MinigamesSheet } from './components/MinigamesSheet';
 import { GeneratorsSheet } from './components/GeneratorsSheet';
 import { PromoSheet } from './components/PromoSheet';
 import { ReferralSheet } from './components/ReferralSheet';
-import { CasesSheet } from './components/CasesSheet';
 import { DailyStreakSheet } from './components/DailyStreakSheet';
 import { BananaBoostButton } from './components/BananaBoostButton';
 import { useGame } from './store/useGameStore';
@@ -104,7 +103,6 @@ export default function App() {
   const [gensOpen, setGensOpen] = useState(false);
   const [promoOpen, setPromoOpen] = useState(false);
   const [refOpen, setRefOpen] = useState(false);
-  const [casesOpen, setCasesOpen] = useState(false);
   const [dailyOpen, setDailyOpen] = useState(false);
 
   return (
@@ -132,7 +130,6 @@ export default function App() {
 
       <div className="relative z-50">
         <TopBar
-          onWallet={() => setWalletOpen(true)}
           onSettings={() => setSettingsOpen(true)}
           onDaily={() => setDailyOpen(true)}
           showDaily={canClaimDaily}
@@ -148,14 +145,6 @@ export default function App() {
         >
           🎲 ИГРЫ
         </button>
-
-        <button
-          onClick={() => setCasesOpen(true)}
-          className="h-14 px-3 rounded-full bg-gradient-to-br from-amber-500 to-red-600 text-white text-sm font-black shadow-[0_8px_24px_rgba(220,60,40,0.5)] active:scale-95 transition flex items-center gap-1"
-        >
-          📦 СУНДУКИ
-        </button>
-
         <button
           onClick={() => setGensOpen(true)}
           className="h-14 px-3 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 text-white text-sm font-black shadow-[0_8px_24px_rgba(20,180,150,0.5)] active:scale-95 transition flex items-center gap-1"
@@ -184,7 +173,6 @@ export default function App() {
       <GeneratorsSheet open={gensOpen} onClose={() => setGensOpen(false)} />
       <PromoSheet open={promoOpen} onClose={() => setPromoOpen(false)} />
       <ReferralSheet open={refOpen} onClose={() => setRefOpen(false)} />
-      <CasesSheet open={casesOpen} onClose={() => setCasesOpen(false)} />
       <DailyStreakSheet open={dailyOpen} onClose={() => setDailyOpen(false)} />
     </div>
   );

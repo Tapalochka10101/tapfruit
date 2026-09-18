@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { parseGenerators, totalTapsPerMinute, pendingPassive } from '../services/generators.js';
-import { GAME } from '../services/gameConfig.js';
 import { mskDate } from '../lib/msk.js';
+import { isSubscriptionActive } from '../services/subscription.js';
 
 export const authRouter = Router();
 
@@ -16,7 +16,6 @@ authRouter.get('/me', async (req, res) => {
 
   const referredCount = await prisma.user.count({ where: { referrerId: user.id } });
 
-  // 📅 может ли забрать стрик
   const canClaimDaily =
     !user.lastDailyClaim || mskDate(user.lastDailyClaim) !== mskDate(new Date());
 
@@ -38,10 +37,13 @@ authRouter.get('/me', async (req, res) => {
       referredCount,
       dailyStreak: user.dailyStreak,
       canClaimDaily,
-      totalCasesOpened: user.totalCasesOpened,
       lastDailyClaim: user.lastDailyClaim?.toISOString() ?? null,
       bananaBoostUntil: user.bananaBoostUntil?.toISOString() ?? null,
       bananaCooldownUntil: user.bananaCooldownUntil?.toISOString() ?? null,
+      // 💳 Подписка
+      balanceRub: user.balanceRub.toString(),
+      subscriptionUntil: user.subscriptionUntil?.toISOString() ?? null,
+      subscriptionActive: isSubscriptionActive(user),
       tapSeed: user.tapSeed.toString(),
       tapIndex: user.tapIndex.toString(),
       settings: JSON.parse(user.settings || '{}'),

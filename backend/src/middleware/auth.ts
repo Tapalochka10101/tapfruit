@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { validateInitData } from '../lib/telegramAuth.js';
 import { prisma } from '../lib/prisma.js';
 import { ENV } from '../env.js';
+import { chargeIfNeeded } from '../services/subscription.js';
 
 declare global {
   namespace Express {
@@ -28,7 +29,6 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
     tgId = BigInt(parsed.user.id);
     username = parsed.user.username ?? null;
     firstName = parsed.user.first_name ?? null;
-    // Referral payload передаётся в initData как start_param
     const params = new URLSearchParams(initData);
     startParam = params.get('start_param');
   } else if (DEV_MODE) {
@@ -39,7 +39,6 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
     return res.status(401).json({ error: 'no_init_data' });
   }
 
-  // Определяем referrerId ДО upsert (только если новый юзер)
   let referrerId: string | null = null;
   if (startParam && startParam.startsWith('ref_')) {
     const referrerTgId = startParam.slice(4);
@@ -54,17 +53,23 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
 
   const existing = await prisma.user.findUnique({ where: { tgId }, select: { id: true } });
 
-  const user = await prisma.user.upsert({
+  let user = await prisma.user.upsert({
     where: { tgId },
     update: { username, firstName },
     create: {
       tgId,
       username,
       firstName,
-      referrerId: existing ? null : referrerId,   // реферера ставим только при создании
+      referrerId: existing ? null : referrerId,
     },
-    select: { id: true },
   });
+
+  // Автопродление/списание подписки — раз в 3 дня
+  try {
+    user = await chargeIfNeeded(user);
+  } catch (e) {
+    console.warn('[auth] chargeIfNeeded failed:', (e as Error).message);
+  }
 
   req.userId = user.id;
   req.tgId = tgId;

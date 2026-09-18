@@ -3,55 +3,72 @@ import { rollCrit } from './prng.js';
 import { sameMskDay } from '../lib/msk.js';
 import type { User } from '@prisma/client';
 
-export type TapContext = {
-  upgradeMultiplier: number;
+export type TapModifiers = {
   critChance: number;
   critValue: number;
   boostMultiplier: number;
-  seed: number;
-  startIdx: number;
-  count: number;
+  upgradeMultiplier: number;
+  dailyBonus: bigint;
 };
 
-export function buildTapContext(user: User, count: number): TapContext {
+/**
+ * Собирает модификаторы тапа. Каждый скин добавляет свой модификатор независимо.
+ */
+export function getTapModifiers(user: User): TapModifiers {
   const now = Date.now();
-  const bananaActive = user.bananaBoostUntil && user.bananaBoostUntil.getTime() > now;
   const skin = user.activeSkin as SkinId | null;
 
-  const pear = GAME.SKINS.pear;
-  const banana = GAME.SKINS.banana;
+  let critChance = 0;
+  let critValue = GAME.BASE_TAP;
+  let boostMultiplier = 1;
+  let dailyBonus = 0n;
 
-  return {
-    upgradeMultiplier: GAME.upgradeMultiplier(user.upgradeLevel),
-    critChance: skin === 'pear' ? (pear.critChance ?? 0) : 0,
-    critValue: skin === 'pear' ? (pear.critValue ?? GAME.BASE_TAP) : GAME.BASE_TAP,
-    boostMultiplier: bananaActive ? (banana.boostMultiplier ?? 1) : 1,
-    seed: Number(user.tapSeed % 0xffffffffn),
-    startIdx: Number(user.tapIndex),
-    count,
-  };
+  const upgradeMultiplier = GAME.upgradeMultiplier(user.upgradeLevel);
+
+  if (skin === 'pear') {
+    critChance = GAME.SKINS.pear.critChance;
+    critValue = GAME.SKINS.pear.critValue;
+  }
+  if (skin === 'orange') {
+    dailyBonus = GAME.SKINS.orange.dailyBonus;
+  }
+  if (skin === 'banana' && user.bananaBoostUntil && user.bananaBoostUntil.getTime() > now) {
+    boostMultiplier = GAME.SKINS.banana.boostMultiplier;
+  }
+
+  return { critChance, critValue, boostMultiplier, upgradeMultiplier, dailyBonus };
 }
 
-export function computeTaps(ctx: TapContext) {
+export type TapResult = {
+  totalTaps: number;
+  totalValue: bigint;
+  crits: number;
+};
+
+export function computeTaps(user: User, startIdx: number, count: number): TapResult {
+  const mods = getTapModifiers(user);
+  const seed = Number(user.tapSeed % 0xffffffffn);
+
   let sum = 0n;
   let crits = 0;
-  for (let i = 0; i < ctx.count; i++) {
-    const idx = ctx.startIdx + i;
-    const isCrit = rollCrit(ctx.seed, idx, ctx.critChance);
+
+  for (let i = 0; i < count; i++) {
+    const idx = startIdx + i;
+    const isCrit = rollCrit(seed, idx, mods.critChance);
     if (isCrit) crits++;
-    const base = isCrit ? ctx.critValue : GAME.BASE_TAP;
-    const v = Math.round(base * ctx.upgradeMultiplier * ctx.boostMultiplier);
-    sum += BigInt(v);
+
+    const base = isCrit ? mods.critValue : GAME.BASE_TAP;
+    const value = Math.round(base * mods.upgradeMultiplier * mods.boostMultiplier);
+    sum += BigInt(value);
   }
-  return { totalValue: sum, crits };
+
+  return { totalTaps: count, totalValue: sum, crits };
 }
 
 export function tryClaimDaily(user: User): { claimed: boolean; amount: bigint } {
-  const skin = user.activeSkin as SkinId | null;
-  if (skin !== 'orange') return { claimed: false, amount: 0n };
+  if (user.activeSkin !== 'orange') return { claimed: false, amount: 0n };
   if (user.lastDailyClaim && sameMskDay(user.lastDailyClaim, new Date())) {
     return { claimed: false, amount: 0n };
   }
-  const orange = GAME.SKINS.orange;
-  return { claimed: true, amount: orange.dailyBonus ?? 100n };
+  return { claimed: true, amount: GAME.SKINS.orange.dailyBonus };
 }

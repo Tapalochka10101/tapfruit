@@ -34,8 +34,10 @@ model User {
   dailyStreak         Int       @default(0)   // сколько дней подряд
   lastDailyClaim      DateTime?
 
-  // 🎰 Кейсы
-  totalCasesOpened    Int       @default(0)
+  // 💳 Подписка (баланс в копейках)
+  balanceRub          BigInt    @default(0)
+  subscriptionUntil   DateTime?
+  lastChargeAt        DateTime?
 
   bananaBoostUntil    DateTime?
   bananaCooldownUntil DateTime?

@@ -186,7 +186,7 @@ export function MinigamesSheet({ open, onClose }: { open: boolean; onClose: () =
             </div>
 
             <div>
-              <div className="text-xs text-[var(--tg-hint)] mb-2 text-center">Ставка</div>
+              <div className="text-xs text-[var(--tg-hint)] mb-2 text-center">Количество</div>
               <div className="flex gap-2">
                 {BETS.map(b => (
                   <button

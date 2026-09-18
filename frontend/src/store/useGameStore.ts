@@ -10,6 +10,8 @@ export type OwnedGenerator = { id: string; count: number };
 
 type State = {
   ready: boolean;
+  balanceRub: number;
+  subscriptionUntil: number | null;
   balance: number;
   chips: number;
   totalTaps: number;
@@ -47,6 +49,8 @@ type State = {
 
 export const useGame = create<State>((set) => ({
   ready: false,
+  balanceRub: 0,
+  subscriptionUntil: null,
   balance: 0,
   chips: 0,
   totalTaps: 0,
@@ -73,6 +77,8 @@ export const useGame = create<State>((set) => ({
     const u = r.user;
     set({
       ready: true,
+      balanceRub: Number((u as any).balanceRub ?? 0) / 100,
+      subscriptionUntil: (u as any).subscriptionUntil ? Date.parse((u as any).subscriptionUntil) : null,
       balance: Number(u.balance),
       chips: Number(u.chips ?? 0),
       totalTaps: Number(u.totalTaps),

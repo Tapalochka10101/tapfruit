@@ -3,12 +3,10 @@ import { useGame } from '../store/useGameStore';
 import { fmt } from '../lib/format';
 
 export function TopBar({
-  onWallet,
   onSettings,
   onDaily,
   showDaily,
 }: {
-  onWallet: () => void;
   onSettings: () => void;
   onDaily: () => void;
   showDaily: boolean;
@@ -17,11 +15,7 @@ export function TopBar({
 
   return (
     <div className="flex items-center justify-between px-4 pt-5 pb-3 relative z-20">
-      <button
-        onClick={onWallet}
-        className="w-14 h-14 rounded-2xl bg-[var(--tg-card)] flex items-center justify-center text-2xl active:scale-95 transition shadow-sm"
-        aria-label="wallet"
-      >💸</button>
+      <div className="w-14 h-14" />
 
       <div className="flex flex-col items-center relative">
         <AnimatePresence mode="popLayout">
