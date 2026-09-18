@@ -1,9 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { buildTapContext, computeTaps } from '../services/game.js';
+import { computeTaps } from '../services/game.js';
 import { validateTapBatch } from '../services/antiCheat.js';
-import { payReferralBonus } from '../services/referrals.js';
 
 export const tapRouter = Router();
 
@@ -16,6 +15,7 @@ const TapSchema = z.object({
 tapRouter.post('/tap', async (req, res) => {
   const parsed = TapSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'bad_payload' });
+
   const { startIdx, endIdx, count } = parsed.data;
 
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
@@ -31,9 +31,16 @@ tapRouter.post('/tap', async (req, res) => {
 
   if (!check.ok) {
     await prisma.tapLog.create({
-      data: { userId: user.id, count, crits: 0, cps: check.cps, flagged: true, reason: check.reason },
+      data: {
+        userId: user.id,
+        count,
+        crits: 0,
+        cps: check.cps,
+        flagged: true,
+        reason: check.reason,
+      },
     });
-    return res.json({
+    return res.status(200).json({
       rejected: true,
       reason: check.reason,
       balance: user.balance.toString(),
@@ -42,10 +49,10 @@ tapRouter.post('/tap', async (req, res) => {
     });
   }
 
-  const ctx = buildTapContext(user, count);
-  const result = computeTaps(ctx);
+  const result = computeTaps(user, Number(user.tapIndex), count);
+
   const newBalance = user.balance + result.totalValue;
-  const newTapIndex = BigInt(ctx.startIdx + count);
+  const newTapIndex = BigInt(Number(user.tapIndex) + count);
   const rotate = newTapIndex % 200n === 0n;
   const newSeed = rotate ? BigInt(Math.floor(Math.random() * 0xffffffff)) : user.tapSeed;
 
@@ -61,14 +68,14 @@ tapRouter.post('/tap', async (req, res) => {
       },
     }),
     prisma.tapLog.create({
-      data: { userId: user.id, count, crits: result.crits, cps: check.cps },
+      data: {
+        userId: user.id,
+        count,
+        crits: result.crits,
+        cps: check.cps,
+      },
     }),
   ]);
-
-  // 🤝 Реферальный бонус — не блокируем ответ, шлём асинхронно
-  payReferralBonus(user.id, result.totalValue).catch(e => {
-    console.error('[referral] bonus failed:', e);
-  });
 
   res.json({
     balance: updated.balance.toString(),

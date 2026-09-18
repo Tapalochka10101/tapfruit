@@ -14,7 +14,6 @@ import { minigamesRouter } from './routes/minigames.js';
 import { generatorsRouter } from './routes/generators.js';
 import { promosRouter } from './routes/promos.js';
 import { referralsRouter } from './routes/referrals.js';
-import { casesRouter } from './routes/cases.js';
 import { dailyRouter } from './routes/daily.js';
 import { bot, buildReferralLink, botWebhook } from './bot.js';
 
@@ -38,7 +37,6 @@ api.use(minigamesRouter);
 api.use(generatorsRouter);
 api.use(promosRouter);
 api.use(referralsRouter);
-api.use(casesRouter);
 api.use(dailyRouter);
 api.get('/referral', (req, res) => { res.json({ url: buildReferralLink(req.tgId!) }); });
 app.use('/api', api);

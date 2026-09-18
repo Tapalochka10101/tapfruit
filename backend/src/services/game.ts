@@ -11,29 +11,26 @@ export type TapModifiers = {
   dailyBonus: bigint;
 };
 
-/**
- * Собирает модификаторы тапа. Каждый скин добавляет свой модификатор независимо.
- */
 export function getTapModifiers(user: User): TapModifiers {
   const now = Date.now();
   const skin = user.activeSkin as SkinId | null;
 
   let critChance = 0;
-  let critValue = GAME.BASE_TAP;
+  let critValue: number = GAME.BASE_TAP;
   let boostMultiplier = 1;
-  let dailyBonus = 0n;
+  let dailyBonus: bigint = 0n;
 
   const upgradeMultiplier = GAME.upgradeMultiplier(user.upgradeLevel);
 
   if (skin === 'pear') {
-    critChance = GAME.SKINS.pear.critChance;
-    critValue = GAME.SKINS.pear.critValue;
+    critChance = Number(GAME.SKINS.pear.critChance ?? 0);
+    critValue = Number(GAME.SKINS.pear.critValue ?? GAME.BASE_TAP);
   }
   if (skin === 'orange') {
-    dailyBonus = GAME.SKINS.orange.dailyBonus;
+    dailyBonus = BigInt(GAME.SKINS.orange.dailyBonus ?? 0);
   }
   if (skin === 'banana' && user.bananaBoostUntil && user.bananaBoostUntil.getTime() > now) {
-    boostMultiplier = GAME.SKINS.banana.boostMultiplier;
+    boostMultiplier = Number(GAME.SKINS.banana.boostMultiplier ?? 1);
   }
 
   return { critChance, critValue, boostMultiplier, upgradeMultiplier, dailyBonus };
@@ -70,5 +67,5 @@ export function tryClaimDaily(user: User): { claimed: boolean; amount: bigint } 
   if (user.lastDailyClaim && sameMskDay(user.lastDailyClaim, new Date())) {
     return { claimed: false, amount: 0n };
   }
-  return { claimed: true, amount: GAME.SKINS.orange.dailyBonus };
+  return { claimed: true, amount: BigInt(GAME.SKINS.orange.dailyBonus ?? 0) };
 }

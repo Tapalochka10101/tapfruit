@@ -20,6 +20,7 @@ bot.command('start', async ctx => {
 });
 
 bot.hears('💰 Баланс', async ctx => {
+  if (!ctx.from) return;
   const tgId = BigInt(ctx.from.id);
   const user = await prisma.user.findUnique({ where: { tgId } });
 
