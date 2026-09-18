@@ -18,11 +18,14 @@ export function buildTapContext(user: User, count: number): TapContext {
   const bananaActive = user.bananaBoostUntil && user.bananaBoostUntil.getTime() > now;
   const skin = user.activeSkin as SkinId | null;
 
+  const pear = GAME.SKINS.pear;
+  const banana = GAME.SKINS.banana;
+
   return {
     upgradeMultiplier: GAME.upgradeMultiplier(user.upgradeLevel),
-    critChance: skin === 'pear' ? GAME.SKINS.pear.critChance : 0,
-    critValue: skin === 'pear' ? GAME.SKINS.pear.critValue : GAME.BASE_TAP,
-    boostMultiplier: bananaActive ? GAME.SKINS.banana.boostMultiplier : 1,
+    critChance: skin === 'pear' ? (pear.critChance ?? 0) : 0,
+    critValue: skin === 'pear' ? (pear.critValue ?? GAME.BASE_TAP) : GAME.BASE_TAP,
+    boostMultiplier: bananaActive ? (banana.boostMultiplier ?? 1) : 1,
     seed: Number(user.tapSeed % 0xffffffffn),
     startIdx: Number(user.tapIndex),
     count,
@@ -49,5 +52,6 @@ export function tryClaimDaily(user: User): { claimed: boolean; amount: bigint } 
   if (user.lastDailyClaim && sameMskDay(user.lastDailyClaim, new Date())) {
     return { claimed: false, amount: 0n };
   }
-  return { claimed: true, amount: GAME.SKINS.orange.dailyBonus };
+  const orange = GAME.SKINS.orange;
+  return { claimed: true, amount: orange.dailyBonus ?? 100n };
 }

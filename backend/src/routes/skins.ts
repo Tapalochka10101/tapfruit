@@ -26,8 +26,12 @@ skinsRouter.post('/skins/banana/activate', async (req, res) => {
     return res.status(400).json({ error: 'cooldown' });
   }
 
-  const boostUntil = new Date(now + GAME.SKINS.banana.boostDurationMs);
-  const cooldownUntil = new Date(now + GAME.SKINS.banana.boostCooldownMs);
+  const banana = GAME.SKINS.banana;
+  const boostDurationMs = banana.boostDurationMs ?? 15_000;
+  const boostCooldownMs = banana.boostCooldownMs ?? 30 * 60_000;
+
+  const boostUntil = new Date(now + boostDurationMs);
+  const cooldownUntil = new Date(now + boostCooldownMs);
 
   const updated = await prisma.user.update({
     where: { id: user.id },
