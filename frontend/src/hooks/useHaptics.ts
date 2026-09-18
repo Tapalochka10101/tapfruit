@@ -1,12 +1,25 @@
-import { tg } from '../lib/telegram';
-import { useSettings } from '../store/useSettingsStore';
+import { useMemo } from 'react';
+
+type HF = {
+  impactOccurred: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => void;
+  notificationOccurred: (type: 'error' | 'success' | 'warning') => void;
+  selectionChanged: () => void;
+};
+
+const getHf = (): HF | undefined => {
+  try {
+    return (window.Telegram?.WebApp as any)?.HapticFeedback;
+  } catch {
+    return undefined;
+  }
+};
 
 export function useHaptics() {
-  const enabled = useSettings(s => s.vibration);
-  return {
-    tap: () => { if (enabled) tg.HapticFeedback?.impactOccurred('light'); },
-    crit: () => { if (enabled) tg.HapticFeedback?.notificationOccurred('success'); },
-    success: () => { if (enabled) tg.HapticFeedback?.notificationOccurred('success'); },
-    error: () => { if (enabled) tg.HapticFeedback?.notificationOccurred('error'); },
-  };
+  return useMemo(() => ({
+    tap: () => getHf()?.impactOccurred('light'),
+    crit: () => getHf()?.impactOccurred('heavy'),
+    success: () => getHf()?.notificationOccurred('success'),
+    error: () => getHf()?.notificationOccurred('error'),
+    select: () => getHf()?.selectionChanged(),
+  }), []);
 }
