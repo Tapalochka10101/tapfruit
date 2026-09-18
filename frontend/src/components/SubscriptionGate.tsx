@@ -28,7 +28,6 @@ export function SubscriptionGate() {
     setStep('method');
   };
 
-  /* ---------- Шаг 1: выбор тарифа/суммы ---------- */
   if (step === 'plan') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-amber-50 to-orange-100">
@@ -86,14 +85,11 @@ export function SubscriptionGate() {
     );
   }
 
-  /* ---------- Шаг 2: способ оплаты ---------- */
   if (step === 'method') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-amber-50 to-orange-100">
         <h1 className="text-2xl font-black mb-2">Способ оплаты</h1>
-        <p className="text-gray-700 mb-6">
-          К оплате: <b>{totalRub}₽</b>
-        </p>
+        <p className="text-gray-700 mb-6">К оплате: <b>{totalRub}₽</b></p>
 
         <button
           onClick={() => setStep('sbp')}
@@ -112,7 +108,6 @@ export function SubscriptionGate() {
     );
   }
 
-  /* ---------- Шаг 3: заглушка СБП ---------- */
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-black">
       <img

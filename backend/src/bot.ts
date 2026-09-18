@@ -45,7 +45,7 @@ bot.hears('💰 Баланс', async ctx => {
     daysLeft > 0 ? `\n✅ Подписка активна ещё ${daysLeft} ${pluralDays(daysLeft)}` : '\n⚠️ Подписка неактивна',
   ];
 
-  const kb = new InlineKeyboard().webApp('💳 ПОПОЛНИТЬ', `${ENV.WEBAPP_URL}?topup=1`);
+  const kb = new InlineKeyboard().webApp('💳 ПОПОЛНИТЬ', `${ENV.WEBAPP_URL}?startapp=topup`);
   await ctx.reply(lines.join('\n'), { reply_markup: kb });
 });
 

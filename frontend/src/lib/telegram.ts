@@ -31,3 +31,11 @@ export function applyTheme(mode: 'light' | 'dark' | 'tg') {
   html.dataset.theme = effective;
   tg.setHeaderColor?.(effective === 'dark' ? '#1c1c1e' : '#ffffff');
 }
+/** Возвращает start_param из initData (то, что передали в ?startapp=). */
+export function getStartParam(): string | null {
+  try {
+    return window.Telegram?.WebApp?.initDataUnsafe?.start_param ?? null;
+  } catch {
+    return null;
+  }
+}

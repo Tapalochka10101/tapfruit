@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { TopBar } from './components/TopBar';
 import { SubscriptionGate } from './components/SubscriptionGate';
+import { getStartParam } from './lib/telegram';
 import { SubscriptionInfoSheet } from './components/SubscriptionInfoSheet';
 import { Apple } from './components/Apple';
 import { Particles, type Particle } from './components/Particles';
@@ -100,7 +101,8 @@ export default function App() {
   }, [ready, seed, upgradeLevel, boostUntil, particlesEnabled, addOptimistic, registerTap, batcher, haptics, play]);
 
   // 🚪 Если подписка неактивна — показываем гейт вместо игры
-  if (ready && !subscriptionActive) {
+  const forceTopup = getStartParam() === 'topup';
+  if (ready && (!subscriptionActive || forceTopup)) {
     return <SubscriptionGate />;
   }
 
