@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useGame } from '../store/useGameStore';
-import { api } from '../lib/api';
 
 const PLANS = [
   { rub: 100, days: 3, label: '3 дня' },
@@ -18,7 +17,6 @@ export function SubscriptionGate() {
   const [customRub, setCustomRub] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  // Итоговая сумма
   const totalRub = selected ?? (customRub ? Number(customRub) : 0);
 
   const proceedToMethod = () => {
@@ -28,11 +26,6 @@ export function SubscriptionGate() {
     }
     setError(null);
     setStep('method');
-  };
-
-  const paySbp = () => {
-    // Заглушка — показываем картинку. Позже здесь будет реальный redirect на кассу.
-    setStep('sbp');
   };
 
   /* ---------- Шаг 1: выбор тарифа/суммы ---------- */
@@ -103,7 +96,7 @@ export function SubscriptionGate() {
         </p>
 
         <button
-          onClick={paySbp}
+          onClick={() => setStep('sbp')}
           className="w-full max-w-sm p-5 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black text-lg active:scale-95 transition"
         >
           СБП +8,5%
@@ -119,7 +112,7 @@ export function SubscriptionGate() {
     );
   }
 
-  /* ---------- Шаг 3: заглушка СБП (картинка) ---------- */
+  /* ---------- Шаг 3: заглушка СБП ---------- */
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-black">
       <img

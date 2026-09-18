@@ -1,18 +1,32 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { ENV } from '../env.js';
 
 export const adminRouter = Router();
 
-function isAdmin(tgId: bigint | undefined): boolean {
-  if (!tgId) return false;
+/** Проверка: либо initData принадлежит админу, либо введён верный пароль. */
+function isAuthorized(req: { tgId?: bigint; header: (k: string) => string | undefined }): boolean {
+  // 1. По initData (штатный путь)
   const adminId = process.env.ADMIN_TG_ID;
-  return !!adminId && tgId.toString() === adminId;
+  if (req.tgId && adminId && req.tgId.toString() === adminId) return true;
+
+  // 2. По паролю (debug-путь)
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (adminPassword) {
+    const provided = req.header('x-admin-password');
+    if (provided && provided === adminPassword) return true;
+  }
+
+  return false;
 }
 
 adminRouter.use((req, res, next) => {
-  if (!isAdmin(req.tgId)) return res.status(403).json({ error: 'forbidden' });
+  if (!isAuthorized(req)) {
+    return res.status(403).json({
+      error: 'forbidden',
+      hint: 'Передай верный x-init-data (от админа) или x-admin-password',
+    });
+  }
   next();
 });
 
@@ -54,7 +68,11 @@ adminRouter.post('/grant-by-username', async (req, res) => {
   });
 });
 
-/** GET /api/admin/whoami — проверка, что ты админ. */
+/** GET /api/admin/whoami — проверка прав. */
 adminRouter.get('/whoami', (req, res) => {
-  res.json({ isAdmin: isAdmin(req.tgId), tgId: req.tgId?.toString() ?? null });
+  res.json({
+    isAdmin: isAuthorized(req),
+    tgId: req.tgId?.toString() ?? null,
+    method: req.tgId ? 'initData' : 'password',
+  });
 });

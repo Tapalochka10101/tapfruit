@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { TopBar } from './components/TopBar';
 import { SubscriptionGate } from './components/SubscriptionGate';
+import { SubscriptionInfoSheet } from './components/SubscriptionInfoSheet';
 import { Apple } from './components/Apple';
 import { Particles, type Particle } from './components/Particles';
 import { FloatingTexts, type Floating } from './components/FloatingText';
@@ -111,6 +112,7 @@ export default function App() {
   const [promoOpen, setPromoOpen] = useState(false);
   const [refOpen, setRefOpen] = useState(false);
   const [dailyOpen, setDailyOpen] = useState(false);
+  const [subscriptionInfoOpen, setSubscriptionInfoOpen] = useState(false);
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden">
@@ -140,6 +142,7 @@ export default function App() {
           onSettings={() => setSettingsOpen(true)}
           onDaily={() => setDailyOpen(true)}
           showDaily={canClaimDaily}
+          onSubscription={() => setSubscriptionInfoOpen(true)}
         />
       </div>
 
@@ -181,6 +184,7 @@ export default function App() {
       <PromoSheet open={promoOpen} onClose={() => setPromoOpen(false)} />
       <ReferralSheet open={refOpen} onClose={() => setRefOpen(false)} />
       <DailyStreakSheet open={dailyOpen} onClose={() => setDailyOpen(false)} />
+      <SubscriptionInfoSheet open={subscriptionInfoOpen} onClose={() => setSubscriptionInfoOpen(false)} />
     </div>
   );
 }

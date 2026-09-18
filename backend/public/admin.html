@@ -6,7 +6,7 @@
   <title>Tap Fruit — Admin</title>
   <style>
     body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; padding: 24px; max-width: 560px; margin: 0 auto; }
-    input, button { font: inherit; padding: 12px 16px; border-radius: 12px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; width: 100%; box-sizing: border-box; }
+    input, button, textarea { font: inherit; padding: 12px 16px; border-radius: 12px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; width: 100%; box-sizing: border-box; }
     button { background: #f97316; border: none; color: white; font-weight: 700; cursor: pointer; margin-top: 12px; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
     h1 { margin: 0 0 8px; }
@@ -19,10 +19,13 @@
 </head>
 <body>
   <h1>🍎 Tap Fruit — Admin</h1>
-  <p>Только для админа. initData из TWA.</p>
+  <p>Введи пароль (x-admin-password) или initData от админа.</p>
 
-  <label>initData</label>
-  <textarea id="initData" rows="3" style="width:100%;box-sizing:border-box;font-family:monospace;font-size:12px;padding:8px;border-radius:12px;background:#1e293b;color:#e2e8f0;border:1px solid #334155" placeholder="Вставь initData из TWA"></textarea>
+  <label>Пароль (проще)</label>
+  <input id="password" type="password" placeholder="ADMIN_PASSWORD" />
+
+  <label>initData (альтернатива)</label>
+  <textarea id="initData" rows="2" placeholder="Вставь initData из TWA — опционально"></textarea>
 
   <label>@username игрока</label>
   <input id="username" placeholder="username без @" />
@@ -39,23 +42,26 @@
 const $ = id => document.getElementById(id);
 
 async function api(path, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  const pw = $('password').value.trim();
+  const id = $('initData').value.trim();
+  if (pw) headers['x-admin-password'] = pw;
+  if (id) headers['x-init-data'] = id;
+
   const res = await fetch('/api/admin' + path, {
     method: body ? 'POST' : 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-init-data': $('initData').value.trim(),
-    },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || res.status);
+  if (!res.ok) throw new Error(data.error || data.hint || res.status);
   return data;
 }
 
 $('whoami').onclick = async () => {
   try {
     const r = await api('/whoami');
-    $('msg').innerHTML = `<div class="ok">Ты админ: ${r.isAdmin} (tgId ${r.tgId})</div>`;
+    $('msg').innerHTML = `<div class="ok">✅ Права ОК. Метод: ${r.method}, tgId: ${r.tgId ?? '—'}</div>`;
   } catch (e) { $('msg').innerHTML = `<div class="err">${e.message}</div>`; }
 };
 
