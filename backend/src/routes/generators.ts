@@ -21,7 +21,6 @@ generatorsRouter.get('/generators', async (req, res) => {
   const pending = pendingPassive(user);
   const cap = maxCappedPassive(owned);
 
-  // когда достигнет лимита (для отображения прогресс-бара)
   const now = Date.now();
   const last = user.lastPassiveAt?.getTime() ?? now;
   const elapsed = now - last;
@@ -29,12 +28,12 @@ generatorsRouter.get('/generators', async (req, res) => {
 
   res.json({
     owned,
-    rate,                                  // тапсов/мин
-    pending: pending.toString(),           // накоплено и не собрано
-    cap: cap.toString(),                   // максимум за 8 часов
-    msUntilFull: filledUntilFull,          // через сколько заполнится полностью
-    maxOfflineMs: GAME.MAX_OFFLINE_MS,     // 8 часов
-    catalog: GAME.GENERATORS.map(g => ({
+    rate,
+    pending: pending.toString(),
+    cap: cap.toString(),
+    msUntilFull: filledUntilFull,
+    maxOfflineMs: GAME.MAX_OFFLINE_MS,
+    catalog: GAME.GENERATORS.map((g: { id: string; label: string; emoji: string; price: bigint; tapsPerMin: number }) => ({
       id: g.id,
       label: g.label,
       emoji: g.emoji,
@@ -60,7 +59,6 @@ generatorsRouter.post('/generators/buy', async (req, res) => {
   const owned = parseGenerators(user.generators);
   const next = addGenerator(owned, gen.id);
 
-  // Считаем накопленный пассив (с обрезкой 8 часов) и зачисляем вместе с покупкой
   const pending = pendingPassive(user);
   const newBalance = user.balance - gen.price + pending;
 

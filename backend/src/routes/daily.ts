@@ -28,14 +28,14 @@ dailyRouter.get('/daily/status', async (req, res) => {
     ? (wasYesterday(user.lastDailyClaim) ? Math.min(currentStreak + 1, 7) : 1)
     : currentStreak;
 
-  const reward = GAME.DAILY_STREAK.find(d => d.day === nextStreak)?.reward ?? 1_000n;
+  const reward = GAME.DAILY_STREAK.find((d: { day: number; reward: bigint }) => d.day === nextStreak)?.reward ?? 1_000n;
 
   res.json({
     canClaim,
     currentStreak,
     nextStreak,
     nextReward: reward.toString(),
-    streakTable: GAME.DAILY_STREAK.map(d => ({ day: d.day, reward: d.reward.toString() })),
+    streakTable: GAME.DAILY_STREAK.map((d: { day: number; reward: bigint }) => ({ day: d.day, reward: d.reward.toString() })),
   });
 });
 
@@ -50,10 +50,9 @@ dailyRouter.post('/daily/claim', async (req, res) => {
     ? Math.min(user.dailyStreak + 1, 7)
     : 1;
 
-  // Если стрик уже 7 — циклически возвращаемся к 1 после получения 7-го
   const actualStreak = (newStreak > 7) ? 1 : newStreak;
 
-  const reward = GAME.DAILY_STREAK.find(d => d.day === actualStreak)?.reward ?? 1_000n;
+  const reward = GAME.DAILY_STREAK.find((d: { day: number; reward: bigint }) => d.day === actualStreak)?.reward ?? 1_000n;
 
   const updated = await prisma.user.update({
     where: { id: user.id },
