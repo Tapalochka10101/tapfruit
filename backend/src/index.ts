@@ -32,6 +32,7 @@ app.post('/telegram/webhook', botWebhook);
 app.post('/api/wallet/webhook', async (_req, res) => { res.json({ ok: true }); });
 
 const api = express.Router();
+api.use('/admin', adminRouter);
 api.use(authMiddleware);
 api.use(authRouter);
 api.use(tapRouter);
@@ -44,7 +45,6 @@ api.use(generatorsRouter);
 api.use(promosRouter);
 api.use(referralsRouter);
 api.use(dailyRouter);
-api.use('/admin', adminRouter);
 api.get('/referral', (req, res) => { res.json({ url: buildReferralLink(req.tgId!) }); });
 app.use('/api', api);
 
