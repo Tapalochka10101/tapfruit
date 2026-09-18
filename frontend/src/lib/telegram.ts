@@ -1,24 +1,30 @@
-import WebApp from '@twa-dev/sdk';
+// Используем глобальный window.Telegram (он появляется из telegram-web-app.js
+// который подключается в index.html). Никакого npm-пакета не нужно.
 
-WebApp.ready();
-WebApp.expand();
-try { WebApp.requestFullscreen?.(); } catch { /* older clients */ }
-WebApp.disableVerticalSwipes?.();
-WebApp.setHeaderColor?.('#ffffff');
+const getWebApp = () => window.Telegram?.WebApp;
 
-export const tg = WebApp;
-export const initData = WebApp.initData;
+export const tg = getWebApp();
+export const initData = getWebApp()?.initData ?? '';
+
+// Side-effect: инициализация
+if (tg) {
+  tg.ready();
+  tg.expand();
+  try { tg.requestFullscreen?.(); } catch { /* older clients */ }
+  tg.disableVerticalSwipes?.();
+  tg.setHeaderColor?.('#ffffff');
+}
 
 export function applyTheme(mode: 'light' | 'dark' | 'tg') {
   const html = document.documentElement;
-  const effective = mode === 'tg' ? (WebApp.colorScheme ?? 'light') : mode;
+  const effective = mode === 'tg' ? (getWebApp()?.colorScheme ?? 'light') : mode;
   html.dataset.theme = effective;
-  WebApp.setHeaderColor?.(effective === 'dark' ? '#1c1c1e' : '#ffffff');
+  getWebApp()?.setHeaderColor?.(effective === 'dark' ? '#1c1c1e' : '#ffffff');
 }
 
 export function getStartParam(): string | null {
   try {
-    const fromSdk = WebApp.initDataUnsafe?.start_param;
+    const fromSdk = getWebApp()?.initDataUnsafe?.start_param;
     if (fromSdk) return fromSdk;
   } catch { /* ignore */ }
   try {
