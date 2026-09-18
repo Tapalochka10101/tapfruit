@@ -1,4 +1,4 @@
-import { Bot, InlineKeyboard } from 'grammy';
+import { Bot, InlineKeyboard, webhookCallback } from 'grammy';
 import { ENV } from './env.js';
 
 export const bot = new Bot(ENV.BOT_TOKEN || '0:placeholder');
@@ -18,3 +18,7 @@ export function buildReferralLink(tgId: bigint): string {
   const username = (bot as any)?.botInfo?.username ?? 'YourBot';
   return `https://t.me/${username}?start=${tgId.toString()}`;
 }
+
+// Express-хендлер для вебхука. Работает даже без bot.init() —
+// grammY сам инициализируется при первом апдейте.
+export const botWebhook = webhookCallback(bot, 'express');

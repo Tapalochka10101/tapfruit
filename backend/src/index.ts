@@ -16,13 +16,14 @@ import { promosRouter } from './routes/promos.js';
 import { referralsRouter } from './routes/referrals.js';
 import { casesRouter } from './routes/cases.js';
 import { dailyRouter } from './routes/daily.js';
-import { bot, buildReferralLink } from './bot.js';
+import { bot, buildReferralLink, botWebhook } from './bot.js';
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '256kb' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+app.post('/telegram/webhook', botWebhook);
 app.post('/api/wallet/webhook', async (_req, res) => { res.json({ ok: true }); });
 
 const api = express.Router();
