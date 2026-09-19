@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { TopBar } from './components/TopBar';
+import { SkinBonus } from './components/SkinBonus';
 import { SubscriptionGate } from './components/SubscriptionGate';
 import { getStartParam } from './lib/telegram';
 import { SubscriptionInfoSheet } from './components/SubscriptionInfoSheet';
@@ -148,6 +149,8 @@ export default function App() {
           showDaily={canClaimDaily}
           onSubscription={() => setSubscriptionInfoOpen(true)}
         />
+
+      <SkinBonus />
       </div>
 
       {/* Верхний спейсер */}

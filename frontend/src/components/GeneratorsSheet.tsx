@@ -10,17 +10,21 @@ type CatalogItem = {
   label: string;
   emoji: string;
   price: string;
+  basePrice?: string;
   tapsPerMin: number;
 };
 
-const MAX_OFFLINE_MS = 8 * 60 * 60 * 1000;
+const DEFAULT_OFFLINE_MS = 8 * 60 * 60 * 1000;
 
 export function GeneratorsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [pending, setPending] = useState<number>(0);
   const [basePending, setBasePending] = useState<number>(0);
   const [cap, setCap] = useState<number>(0);
-  const [msUntilFull, setMsUntilFull] = useState<number>(MAX_OFFLINE_MS);
+  const [msUntilFull, setMsUntilFull] = useState<number>(DEFAULT_OFFLINE_MS);
+  const [maxOfflineMs, setMaxOfflineMs] = useState<number>(DEFAULT_OFFLINE_MS);
+  const [discount, setDiscount] = useState<number>(0);
+  const [collectBonus, setCollectBonus] = useState<number>(0);
   const [tickStart, setTickStart] = useState<number>(Date.now());
   const haptics = useHaptics();
 
@@ -42,6 +46,9 @@ export function GeneratorsSheet({ open, onClose }: { open: boolean; onClose: () 
       setBasePending(Number(r.pending));
       setCap(Number(r.cap));
       setMsUntilFull(r.msUntilFull);
+      setMaxOfflineMs((r as any).maxOfflineMs ?? DEFAULT_OFFLINE_MS);
+      setDiscount((r as any).discount ?? 0);
+      setCollectBonus((r as any).collectBonus ?? 0);
       setTickStart(Date.now());
       setPending(Number(r.pending));
       setGenerators(r.owned, r.rate);
@@ -54,8 +61,7 @@ export function GeneratorsSheet({ open, onClose }: { open: boolean; onClose: () 
     if (!open) return;
     const interval = setInterval(() => {
       const elapsedSec = (Date.now() - tickStart) / 1000;
-      const offlineMult = activeSkin === 'cherry' ? 2 : 1;
-      const ratePerSec = (generatorRate / 60) * offlineMult;
+      const ratePerSec = (generatorRate / 60) * (activeSkin === 'cherry' ? 2 : 1);
       const current = basePending + elapsedSec * ratePerSec;
       setPending(Math.min(Math.floor(current), cap || Number.MAX_SAFE_INTEGER));
     }, 250);
@@ -75,7 +81,8 @@ export function GeneratorsSheet({ open, onClose }: { open: boolean; onClose: () 
       setBasePending(0);
       setPending(0);
       setTickStart(Date.now());
-      setMsUntilFull(MAX_OFFLINE_MS);
+      setMsUntilFull(rr.msUntilFull);
+      setMaxOfflineMs((rr as any).maxOfflineMs ?? DEFAULT_OFFLINE_MS);
       haptics.success();
     } catch (e: any) {
       haptics.error();
@@ -109,7 +116,8 @@ export function GeneratorsSheet({ open, onClose }: { open: boolean; onClose: () 
         <div className="text-xs opacity-80 mb-1">Доход</div>
         <div className="text-2xl font-black">+{fmt(generatorRate)} / мин</div>
         <div className="text-xs opacity-80 mt-1">
-          ⏱ Максимум копится 8 часов — заходи чаще!
+          ⏱ Максимум копится {Math.round(maxOfflineMs / 3_600_000)} ч
+          {maxOfflineMs > DEFAULT_OFFLINE_MS && ' 🥥'}
         </div>
       </div>
 
@@ -140,7 +148,12 @@ export function GeneratorsSheet({ open, onClose }: { open: boolean; onClose: () 
               : 'bg-gray-300 text-gray-500'
           }`}
         >
-          💰 Собрать +{fmt(pending)}
+          💰 Собрать +{fmt(collectBonus > 0 ? Math.floor(pending * (1 + collectBonus)) : pending)}
+          {collectBonus > 0 && (
+            <span className="ml-2 text-xs bg-white/25 px-2 py-0.5 rounded-full">
+              🥑 +{Math.round(collectBonus * 100)}%
+            </span>
+          )}
         </button>
       </div>
 
@@ -149,6 +162,8 @@ export function GeneratorsSheet({ open, onClose }: { open: boolean; onClose: () 
         {catalog.map(c => {
           const owned = ownedMap.get(c.id) ?? 0;
           const price = Number(c.price);
+          const basePrice = c.basePrice ? Number(c.basePrice) : price;
+          const hasDiscount = discount > 0 && basePrice > price;
           const affordable = balance >= price;
           return (
             <div key={c.id} className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--tg-card)]">
@@ -166,17 +181,29 @@ export function GeneratorsSheet({ open, onClose }: { open: boolean; onClose: () 
                 </div>
                 <div className="text-xs text-[var(--tg-hint)]">
                   +{fmt(c.tapsPerMin)} тап/мин
+                  {hasDiscount && (
+                    <span className="ml-2 text-[10px] text-green-600 font-bold">
+                      🍋 −{Math.round(discount * 100)}%
+                    </span>
+                  )}
                 </div>
               </div>
               <button
                 disabled={!affordable}
                 onClick={() => buy(c.id)}
-                className={`px-3 py-2 rounded-xl text-xs font-bold shrink-0 transition ${
+                className={`px-3 py-2 rounded-xl text-xs font-bold shrink-0 transition flex flex-col items-end ${
                   affordable
                     ? 'bg-brand text-white active:scale-95'
                     : 'bg-gray-300 text-gray-500'
                 }`}
-              >{fmt(price)}</button>
+              >
+                {hasDiscount && (
+                  <span className="text-[10px] line-through opacity-60 font-normal">
+                    {fmt(basePrice)}
+                  </span>
+                )}
+                <span>{fmt(price)}</span>
+              </button>
             </div>
           );
         })}
