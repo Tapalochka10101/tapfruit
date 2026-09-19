@@ -6,7 +6,7 @@ export const minigamesRouter = Router();
 
 const CHIPS_PER_TAP = 100n;
 const MIN_BET = 10;
-const MAX_BET = 500;
+const MAX_BET = 5000;
 
 // 🎲 Шансы
 const WIN_CHANCE = 0.30;   // 30% выигрыш
