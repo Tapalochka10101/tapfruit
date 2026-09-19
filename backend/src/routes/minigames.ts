@@ -391,7 +391,7 @@ function tttBest(b: string[], player: 'X' | 'O'): { score: number; move: number 
 function tttBotMove(board: string[]): number {
   // 40% случайный ход, 60% идеальный (минимакс).
   // Иначе победить невозможно.
-  const MISTAKE_CHANCE = 0.40;
+  const MISTAKE_CHANCE = 0.20;
   const empty = board.map((c, i) => c === '' ? i : -1).filter(i => i >= 0);
   if (empty.length > 0 && Math.random() < MISTAKE_CHANCE) {
     return empty[Math.floor(Math.random() * empty.length)];
