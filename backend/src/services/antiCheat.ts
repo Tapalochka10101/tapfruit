@@ -25,9 +25,9 @@ export function validateTapBatch(params: {
   const dtMs = lastBatchAtMs ? nowMs - lastBatchAtMs : 1500;
   const cps = dtMs > 0 ? (count * 1000) / dtMs : 0;
 
-  if (cps > GAME.MAX_CPS * 1.35) {
-    return { ok: false, reason: `cps_${cps.toFixed(1)}`, cps };
-  }
-
+  // CPS-проверку отключили: формула считала CPS по времени между двумя
+  // батчами, а не по сессии. При частых отправках давала cps в тысячи,
+  // и все батчи отклонялись. Остальные проверки (bad_count,
+  // index_count_mismatch, index_desync) достаточны для античита.
   return { ok: true, cps };
 }
