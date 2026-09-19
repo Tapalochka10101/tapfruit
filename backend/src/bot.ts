@@ -1,6 +1,6 @@
 import { Bot, InlineKeyboard, webhookCallback, InputFile } from 'grammy';
 import { ENV } from './env.js';
-import { prisma } from './lib/prisma.js';
+// import { prisma } from './lib/prisma.js'; // TEMP
 
 export const bot = new Bot(ENV.BOT_TOKEN || '0:placeholder');
 
@@ -129,7 +129,7 @@ bot.callbackQuery(/^pay_sbp_(\d+)$/, async ctx => {
 /** Кнопка ПОДПИСКА → инфо. */
 bot.callbackQuery('subscription', async ctx => {
   const tgId = BigInt(ctx.from.id);
-  const user = await prisma.user.findUnique({ where: { tgId } });
+  const user = null; // TEMP
   await ctx.answerCallbackQuery();
 
   if (!user) {
