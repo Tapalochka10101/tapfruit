@@ -87,7 +87,7 @@ const DAILY_STREAK: DailyReward[] = [
 
 export const GAME = {
   BASE_TAP: 1,
-  MAX_CPS: 50,
+  MAX_CPS: 500,
   MAX_BATCH_TAPS: 200,
 
   UPGRADES,
