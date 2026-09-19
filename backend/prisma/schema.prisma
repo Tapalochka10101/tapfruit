@@ -104,3 +104,12 @@ model Admin {
   addedBy   String
   addedAt   DateTime @default(now())
 }
+
+model PromoCode {
+  code      String   @id
+  reward    BigInt
+  maxUses   Int
+  usedCount Int      @default(0)
+  label     String?
+  createdAt DateTime @default(now())
+}

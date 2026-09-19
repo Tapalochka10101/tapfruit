@@ -1,6 +1,7 @@
 import { Bot, InlineKeyboard, webhookCallback, InputFile } from 'grammy';
 import { ENV } from './env.js';
 import { prisma } from './lib/prisma.js';
+import { listPromos, upsertPromo, deletePromo } from './services/promos.js';
 
 export const bot = new Bot(ENV.BOT_TOKEN || '0:placeholder');
 
@@ -352,7 +353,10 @@ type AdminPending =
   | { step: 'await_amount'; action: AdminAction; targetUserId: string; targetName: string }
   | { step: 'await_prank_username'; prankType: PrankType }
   | { step: 'await_admin_add' }
-  | { step: 'await_admin_remove' };
+  | { step: 'await_admin_remove' }
+  | { step: 'promo_await_code' }
+  | { step: 'promo_await_maxuses'; code: string; reward: number }
+  | { step: 'promo_await_delete_code' };
 
 const pendingAdmin = new Map<number, AdminPending>();
 
@@ -397,7 +401,9 @@ function adminMenu(forUsername?: string | null) {
     .text('📋 Список юзеров', 'admin_users')
     .row();
   if (isRootAdmin(forUsername)) {
-    kb.text('👥 Админы', 'admin_list_admins').row();
+    kb.text('👥 Админы', 'admin_list_admins')
+      .text('🎟 Промокоды', 'promo_admin_list')
+      .row();
   }
   kb.text('🎭 ПРАНК', 'admin_prank')
     .row()
@@ -561,6 +567,60 @@ bot.callbackQuery('admin_add_admin', async ctx => {
   );
 });
 
+function promoMenu() {
+  return new InlineKeyboard()
+    .text('➕ Добавить', 'promo_admin_add')
+    .text('🗑 Удалить', 'promo_admin_del')
+    .row()
+    .text('🔄 Обновить список', 'promo_admin_list')
+    .row()
+    .text('⬅️ Назад', 'admin_menu');
+}
+
+async function renderPromoList(ctx: any) {
+  const list = await listPromos();
+  if (list.length === 0) {
+    await ctx.editMessageText('🎟 <b>Промокодов нет</b>', {
+      parse_mode: 'HTML', reply_markup: promoMenu(),
+    });
+    return;
+  }
+  const lines = list.map(p =>
+    `• <code>${p.code}</code> — +${p.reward.toString()} тапсов, ${p.usedCount}/${p.maxUses}`
+  );
+  await ctx.editMessageText(
+    '🎟 <b>Промокоды</b>\n\n' + lines.join('\n'),
+    { parse_mode: 'HTML', reply_markup: promoMenu() },
+  );
+}
+
+bot.callbackQuery('promo_admin_list', async ctx => {
+  await ctx.answerCallbackQuery();
+  if (!ctx.from || !isAdmin(ctx.from.username)) return;
+  pendingAdmin.delete(ctx.from.id);
+  await renderPromoList(ctx);
+});
+
+bot.callbackQuery('promo_admin_add', async ctx => {
+  await ctx.answerCallbackQuery();
+  if (!ctx.from || !isAdmin(ctx.from.username)) return;
+  pendingAdmin.set(ctx.from.id, { step: 'promo_await_code' });
+  await ctx.editMessageText(
+    '✏️ Отправь <b>название промокода</b> (латиница/цифры/подчёркивание).',
+    { parse_mode: 'HTML', reply_markup: new InlineKeyboard().text('⬅️ Отмена', 'promo_admin_list') },
+  );
+});
+
+bot.callbackQuery('promo_admin_del', async ctx => {
+  await ctx.answerCallbackQuery();
+  if (!ctx.from || !isAdmin(ctx.from.username)) return;
+  pendingAdmin.set(ctx.from.id, { step: 'promo_await_delete_code' });
+  await ctx.editMessageText(
+    '✏️ Отправь <b>название промокода</b> для удаления.',
+    { parse_mode: 'HTML', reply_markup: new InlineKeyboard().text('⬅️ Отмена', 'promo_admin_list') },
+  );
+});
+
 bot.callbackQuery('admin_remove_admin', async ctx => {
   await ctx.answerCallbackQuery();
   if (!ctx.from || !isRootAdmin(ctx.from.username)) return;
@@ -614,6 +674,59 @@ bot.callbackQuery('admin_users', async ctx => {
 bot.on('message:text', async ctx => {
   if (!ctx.from) return;
   const state = pendingAdmin.get(ctx.from.id);
+  // ===== Промокоды =====
+  if (state && state.step === 'promo_await_code' && ctx.from && isAdmin(ctx.from.username)) {
+    const raw = (ctx.message?.text ?? '').trim();
+    const code = raw.toLowerCase().replace(/[^a-z0-9_а-яё]/gi, '').slice(0, 32);
+    if (!code) {
+      await ctx.reply('❌ Пустой код.');
+      return;
+    }
+    pendingAdmin.set(ctx.from.id, { step: 'promo_await_maxuses', code, reward: 0 });
+    await ctx.reply(
+      `✏️ Код: <code>${code}</code>\n\nТеперь отправь <b>количество тапсов</b> (целое число).`,
+      { parse_mode: 'HTML' },
+    );
+    return;
+  }
+
+  if (state && state.step === 'promo_await_maxuses' && ctx.from && isAdmin(ctx.from.username)) {
+    const raw = (ctx.message?.text ?? '').trim();
+    const n = Number(raw.replace(/[^\d]/g, ''));
+    if (!Number.isFinite(n) || n <= 0 || !Number.isInteger(n)) {
+      await ctx.reply('❌ Нужно целое положительное число.');
+      return;
+    }
+    try {
+      await upsertPromo({
+        code: state.code,
+        reward: BigInt(n),
+        maxUses: 999,
+        label: '+' + n + ' тапсов',
+      });
+      pendingAdmin.delete(ctx.from.id);
+      await ctx.reply(
+        `✅ Промокод <code>${state.code}</code> сохранён: +${n} тапсов (без ограничения активаций).`,
+        { parse_mode: 'HTML', reply_markup: new InlineKeyboard().text('🎟 К промокодам', 'promo_admin_list') },
+      );
+    } catch (e: any) {
+      await ctx.reply('❌ Ошибка: ' + (e?.message ?? 'unknown'));
+    }
+    return;
+  }
+
+  if (state && state.step === 'promo_await_delete_code' && ctx.from && isAdmin(ctx.from.username)) {
+    const raw = (ctx.message?.text ?? '').trim();
+    const code = raw.toLowerCase().replace(/[^a-z0-9_а-яё]/gi, '').slice(0, 32);
+    await deletePromo(code);
+    pendingAdmin.delete(ctx.from.id);
+    await ctx.reply(
+      `🗑 Промокод <code>${code}</code> удалён.`,
+      { parse_mode: 'HTML', reply_markup: new InlineKeyboard().text('🎟 К промокодам', 'promo_admin_list') },
+    );
+    return;
+  }
+
   if (state && (state.step === 'await_admin_add' || state.step === 'await_admin_remove') && ctx.from && isRootAdmin(ctx.from.username)) {
     const text = (ctx.message?.text ?? '').trim();
     if (!text.startsWith('@')) {

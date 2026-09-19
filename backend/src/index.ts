@@ -21,6 +21,7 @@ import { promosRouter } from './routes/promos.js';
 import { referralsRouter } from './routes/referrals.js';
 import { dailyRouter } from './routes/daily.js';
 import { adminRouter } from './routes/admin.js';
+import { loadPromosFromDb } from './services/promos.js';
 import { bot, buildReferralLink, botWebhook, loadAdmins } from './bot.js';
 
 const app = express();
@@ -64,6 +65,7 @@ app.use('/api', api);
       await bot.init();
       console.log('[bot] ready:', bot.botInfo.username);
       await loadAdmins();
+      await loadPromosFromDb();
 
       // Регистрируем команды и ставим кнопку Menu снизу
       // /admin НЕ регистрируем публично — команда остаётся рабочей,

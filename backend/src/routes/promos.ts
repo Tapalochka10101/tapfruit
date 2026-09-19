@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import {
-  findPromo,
+  findPromoAsync,
   parseUsedPromos,
   serializeUsedPromos,
   getUsageCount,
@@ -20,7 +20,7 @@ promosRouter.post('/promos/redeem', async (req, res) => {
   const parsed = RedeemSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'bad_payload' });
 
-  const promo = findPromo(parsed.data.code);
+  const promo = await findPromoAsync(parsed.data.code);
   if (!promo) return res.status(404).json({ error: 'invalid_promo' });
 
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
