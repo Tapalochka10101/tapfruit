@@ -1,6 +1,6 @@
 import { Bot, InlineKeyboard, webhookCallback, InputFile } from 'grammy';
 import { ENV } from './env.js';
-// import { prisma } from './lib/prisma.js'; // TEMP
+// // import { prisma } from './lib/prisma.js'; // TEMP // TEMP
 
 export const bot = new Bot(ENV.BOT_TOKEN || '0:placeholder');
 
