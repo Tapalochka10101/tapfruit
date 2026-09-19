@@ -136,6 +136,16 @@ export default function App() {
         <FloatingTexts items={floaters} />
       </div>
 
+      {/* Топбар — наверху */}
+      <div className="relative z-50 pt-4">
+        <TopBar
+          onSettings={() => setSettingsOpen(true)}
+          onDaily={() => setDailyOpen(true)}
+          showDaily={canClaimDaily}
+          onSubscription={() => setSubscriptionInfoOpen(true)}
+        />
+      </div>
+
       {/* Верхний спейсер */}
       <div className="flex-1 min-h-0" />
 
@@ -145,16 +155,6 @@ export default function App() {
           skin={activeSkin}
           bananaBoostActive={boostUntil != null && boostUntil > Date.now()}
           onTap={() => {}}
-        />
-      </div>
-
-      {/* Топбар — ниже яблока */}
-      <div className="relative z-50 mt-2">
-        <TopBar
-          onSettings={() => setSettingsOpen(true)}
-          onDaily={() => setDailyOpen(true)}
-          showDaily={canClaimDaily}
-          onSubscription={() => setSubscriptionInfoOpen(true)}
         />
       </div>
 
