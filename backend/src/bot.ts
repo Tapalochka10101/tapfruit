@@ -177,9 +177,12 @@ bot.callbackQuery('subscription', async ctx => {
 
 
 /** Обработка текстовых сообщений — только для тех, кто в pendingCustomAmount. */
-bot.on('message:text', async ctx => {
+bot.on('message:text', async (ctx, next) => {
   if (!ctx.from) return;
-  if (!pendingCustomAmount.has(ctx.from.id)) return;
+  if (!pendingCustomAmount.has(ctx.from.id)) {
+    // не наше — пропускаем к следующему обработчику (grant)
+    return await next();
+  }
 
   const text = ctx.message.text.trim();
   const rub = Number(text);
@@ -310,5 +313,150 @@ bot.command('grant', async ctx => {
     );
   } catch (e) {
     console.warn('[grant] не смог уведомить юзера:', (e as Error).message);
+  }
+});
+
+
+/** 👑 Админ-панель. Только для @yolotag52. */
+const ADMIN_USERNAME = 'yolotag52';
+const pendingGrantFor = new Set<number>(); // tgId админов, ожидающих ввод @username
+
+function isAdmin(tgUsername?: string | null): boolean {
+  return (tgUsername ?? '').toLowerCase() === ADMIN_USERNAME;
+}
+
+function adminMenu() {
+  return new InlineKeyboard()
+    .text('➕ Выдать 5 дней', 'admin_grant')
+    .row()
+    .text('📋 Список юзеров', 'admin_users')
+    .row()
+    .text('⬅️ Закрыть', 'admin_close');
+}
+
+bot.command('admin', async ctx => {
+  if (!ctx.from || !isAdmin(ctx.from.username)) return;
+  await ctx.reply('👑 <b>Админ-панель</b>\n\nВыбери действие:', {
+    parse_mode: 'HTML',
+    reply_markup: adminMenu(),
+  });
+});
+
+bot.callbackQuery('admin_grant', async ctx => {
+  await ctx.answerCallbackQuery();
+  if (!ctx.from || !isAdmin(ctx.from.username)) return;
+  pendingGrantFor.add(ctx.from.id);
+  await ctx.editMessageText(
+    '✏️ Отправь <b>@username</b> игрока, которому выдать +5 дней подписки.',
+    { parse_mode: 'HTML', reply_markup: new InlineKeyboard().text('⬅️ Отмена', 'admin_close') },
+  );
+});
+
+bot.callbackQuery('admin_users', async ctx => {
+  await ctx.answerCallbackQuery();
+  if (!ctx.from || !isAdmin(ctx.from.username)) return;
+
+  const users = await prisma.user.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+    select: {
+      username: true,
+      firstName: true,
+      tgId: true,
+      subscriptionUntil: true,
+    },
+  });
+
+  if (users.length === 0) {
+    await ctx.editMessageText('Пока никого нет.', {
+      reply_markup: new InlineKeyboard().text('⬅️ Назад', 'admin_menu'),
+    });
+    return;
+  }
+
+  const now = Date.now();
+  const lines = users.map((u, i) => {
+    const nick = u.username ? '@' + u.username : `id${u.tgId}`;
+    const active =
+      u.subscriptionUntil && u.subscriptionUntil.getTime() > now
+        ? `✅ до ${u.subscriptionUntil.toLocaleDateString('ru-RU')}`
+        : '❌ нет';
+    return `${i + 1}. ${nick} — ${active}`;
+  });
+
+  await ctx.editMessageText(
+    '📋 <b>Последние 10 юзеров:</b>\n\n' + lines.join('\n'),
+    {
+      parse_mode: 'HTML',
+      reply_markup: new InlineKeyboard()
+        .text('⬅️ Назад', 'admin_menu'),
+    },
+  );
+});
+
+bot.callbackQuery('admin_menu', async ctx => {
+  await ctx.answerCallbackQuery();
+  if (!ctx.from || !isAdmin(ctx.from.username)) return;
+  await ctx.editMessageText('👑 <b>Админ-панель</b>\n\nВыбери действие:', {
+    parse_mode: 'HTML',
+    reply_markup: adminMenu(),
+  });
+});
+
+bot.callbackQuery('admin_close', async ctx => {
+  await ctx.answerCallbackQuery();
+  if (!ctx.from || !isAdmin(ctx.from.username)) return;
+  pendingGrantFor.delete(ctx.from.id);
+  await ctx.editMessageText('👑 Админ-панель закрыта.');
+});
+
+/** Ввод @username после нажатия «Выдать 5 дней». */
+bot.on('message:text', async ctx => {
+  if (!ctx.from || !pendingGrantFor.has(ctx.from.id)) return;
+  if (!isAdmin(ctx.from.username)) {
+    pendingGrantFor.delete(ctx.from.id);
+    return;
+  }
+
+  const text = ctx.message.text.trim();
+  if (!text.startsWith('@')) {
+    await ctx.reply('Нужен ник в формате @username. Попробуй снова или нажми /admin.');
+    return;
+  }
+
+  const username = text.slice(1).toLowerCase();
+  const target = await prisma.user.findFirst({
+    where: { username: { equals: username, mode: 'insensitive' } },
+  });
+
+  if (!target) {
+    await ctx.reply(`❌ @${username} не найден. Юзер должен хоть раз написать /start боту.`);
+    return;
+  }
+
+  const now = new Date();
+  const base =
+    target.subscriptionUntil && target.subscriptionUntil > now
+      ? target.subscriptionUntil
+      : now;
+  const newUntil = new Date(base.getTime() + 5 * 24 * 60 * 60 * 1000);
+
+  await prisma.user.update({
+    where: { id: target.id },
+    data: { subscriptionUntil: newUntil },
+  });
+
+  pendingGrantFor.delete(ctx.from.id);
+
+  await ctx.reply(
+    `✅ @${username} получил +5 дней. Действует до: ${newUntil.toLocaleString('ru-RU')}`,
+  );
+  try {
+    await bot.api.sendMessage(
+      Number(target.tgId),
+      `🎉 Вам выдана подписка на 5 дней! Действует до: ${newUntil.toLocaleString('ru-RU')}`,
+    );
+  } catch (e) {
+    console.warn('[admin grant] notify failed:', (e as Error).message);
   }
 });

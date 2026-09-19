@@ -61,6 +61,7 @@ app.use('/api', api);
       // Регистрируем команды и ставим кнопку Menu снизу
       await bot.api.setMyCommands([
         { command: 'start', description: 'Открыть меню' },
+        { command: 'admin', description: 'Админ-панель' },
       ]);
       await bot.api.setChatMenuButton({
         menu_button: { type: 'commands' },
