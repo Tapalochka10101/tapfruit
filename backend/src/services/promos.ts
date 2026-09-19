@@ -22,6 +22,22 @@ let promoCache: Map<string, Promo> = new Map();
 /** Загружает промокоды из БД. Если в БД пусто — заливает legacy из PROMOS. */
 export async function loadPromosFromDb(): Promise<void> {
   try {
+    await prisma.$executeRawUnsafe(
+      'CREATE TABLE IF NOT EXISTS "PromoCode" (' +
+      '"code" TEXT NOT NULL, ' +
+      '"reward" BIGINT NOT NULL, ' +
+      '"maxUses" INTEGER NOT NULL, ' +
+      '"usedCount" INTEGER NOT NULL DEFAULT 0, ' +
+      '"label" TEXT, ' +
+      '"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
+      'CONSTRAINT "PromoCode_pkey" PRIMARY KEY ("code"))'
+    );
+    console.log('[promo] table ensured');
+  } catch (e) {
+    console.warn('[promo] create table failed:', (e as Error).message);
+  }
+
+  try {
     let rows = await prisma.promoCode.findMany();
     if (rows.length === 0) {
       console.log('[promo] пустая таблица — сидирую legacy');
