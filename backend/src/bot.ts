@@ -621,6 +621,8 @@ bot.on('message:text', async ctx => {
     return;
   }
 
+  if (state.step !== 'await_amount') return;
+
   // Шаг 2: ждём число
   const amount = Number(text.replace(/[^\d]/g, ''));
   if (!Number.isFinite(amount) || amount <= 0 || !Number.isInteger(amount)) {
