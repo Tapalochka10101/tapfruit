@@ -10,6 +10,8 @@ export function useTapBatcher() {
   const sessionStartIdxRef = useRef<number | null>(null);
   const inFlightRef = useRef(false);
   const timerRef = useRef<number | null>(null);
+  // Сколько тапов сейчас "в полёте" (отправлены, но ответ не пришёл).
+  const pendingRef = useRef<number>(0);
 
   const flush = async () => {
     if (inFlightRef.current) return;
@@ -21,6 +23,7 @@ export function useTapBatcher() {
     bufferRef.current = 0;
     sessionStartIdxRef.current = endIdx + 1;
     inFlightRef.current = true;
+    pendingRef.current += count;
 
     try {
       const r = await api.tap({
@@ -28,9 +31,26 @@ export function useTapBatcher() {
         endIdx: String(endIdx),
         count,
       });
-      useGame.getState().setFromTap(r);
+      pendingRef.current -= count;
+
+      // Обновляем tapIndex/seed всегда — они монотонные и не «прыгают».
+      const patch: any = {
+        tapIndex: Number(r.tapIndex),
+      };
+      if (r.rotated) patch.seed = Number(r.tapSeed);
+
+      // А balance перезаписываем ТОЛЬКО когда всё осело:
+      // буфер пуст и в полёте не осталось других батчей.
+      // Иначе мы бы затирали локальный оптимистичный баланс более старым серверным.
+      const idle = bufferRef.current === 0 && pendingRef.current === 0;
+      if (idle) {
+        patch.balance = Number(r.balance);
+      }
+
+      useGame.setState(patch);
       if (r.rejected) sessionStartIdxRef.current = null;
     } catch (e) {
+      pendingRef.current -= count;
       bufferRef.current += count;
       sessionStartIdxRef.current = startIdx;
       console.warn('[tap] flush failed', e);
