@@ -52,11 +52,9 @@ app.use('/api', api);
   const hasBot = ENV.BOT_TOKEN && ENV.BOT_TOKEN.includes(':') && !ENV.BOT_TOKEN.startsWith('PASTE');
   if (hasBot) {
     try {
-      if (ENV.NODE_ENV === 'production') {
-        await bot.api.setWebhook(`${ENV.PUBLIC_BACKEND_URL}/telegram/webhook`);
-      } else {
-        bot.start({ onStart: info => console.log('[bot] polling as', info.username) });
-      }
+      const webhookUrl = `${ENV.PUBLIC_BACKEND_URL}/telegram/webhook`;
+      await bot.api.setWebhook(webhookUrl);
+      console.log('[bot] webhook set:', webhookUrl);
       await bot.init();
       console.log('[bot] ready:', bot.botInfo.username);
     } catch (e) {
@@ -66,7 +64,9 @@ app.use('/api', api);
     console.log('[bot] skipped (no BOT_TOKEN)');
   }
 
-  app.listen(ENV.PORT, () => console.log(`[http] listening on http://localhost:${ENV.PORT}`));
+  app.listen(ENV.PORT, '0.0.0.0', () =>
+    console.log(`[http] listening on port ${ENV.PORT}`)
+  );
 })();
 
 process.on('SIGTERM', async () => {
