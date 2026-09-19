@@ -4,21 +4,20 @@ import App from './App';
 import './index.css';
 import './lib/telegram';
 
-// === Telegram viewport → CSS-переменная --tg-viewport-height ===
+// Telegram viewport → CSS-переменная (без expand, только реальная видимая высота)
 (function setupTelegramViewport() {
   const tg = (window as any).Telegram?.WebApp;
-  if (!tg) return;
-
   const setH = () => {
-    const h = tg.viewportStableHeight || tg.viewportHeight || window.innerHeight;
+    const h =
+      (tg && (tg.viewportStableHeight || tg.viewportHeight)) ||
+      window.innerHeight;
     document.documentElement.style.setProperty('--tg-viewport-height', `${h}px`);
   };
-
-  tg.ready();
-  tg.expand?.();
   setH();
-
-  tg.onEvent?.('viewportChanged', setH);
+  if (tg) {
+    tg.ready?.();
+    tg.onEvent?.('viewportChanged', setH);
+  }
   window.addEventListener('resize', setH);
   window.addEventListener('orientationchange', setH);
 })();

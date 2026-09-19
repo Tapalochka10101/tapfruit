@@ -120,9 +120,8 @@ export default function App() {
     <div
       className="flex flex-col relative overflow-hidden"
       style={{
-        height: 'var(--tg-viewport-height, 100dvh)',
-        paddingTop: 'env(safe-area-inset-top)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
+        height: '100dvh',
+        paddingTop: 16,
         boxSizing: 'border-box',
       }}
     >
