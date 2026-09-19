@@ -73,3 +73,11 @@ process.on('SIGTERM', async () => {
   await prisma.$disconnect();
   process.exit(0);
 });
+
+process.on('uncaughtException', (err) => {
+  console.error('[uncaught]', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandled]', reason);
+});
