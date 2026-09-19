@@ -9,6 +9,7 @@ import {
   pendingPassive,
   maxCappedPassive,
   addGenerator,
+  collectBonusFor,
 } from '../services/generators.js';
 
 export const generatorsRouter = Router();
@@ -19,12 +20,16 @@ generatorsRouter.get('/generators', async (req, res) => {
   const owned = parseGenerators(user.generators);
   const rate = totalTapsPerMinute(owned);
   const pending = pendingPassive(user);
-  const cap = maxCappedPassive(owned);
+  const cap = maxCappedPassive(owned, user.activeSkin);
+
+  const skinDef: any = user.activeSkin ? (GAME.SKINS as any)[user.activeSkin] : null;
+  const discount: number = skinDef?.generatorDiscount ?? 0;
+  const capMs = skinDef?.offlineCapHours ? skinDef.offlineCapHours * 3_600_000 : GAME.MAX_OFFLINE_MS;
 
   const now = Date.now();
   const last = user.lastPassiveAt?.getTime() ?? now;
   const elapsed = now - last;
-  const filledUntilFull = Math.max(0, GAME.MAX_OFFLINE_MS - elapsed);
+  const filledUntilFull = Math.max(0, capMs - elapsed);
 
   res.json({
     owned,
@@ -32,12 +37,16 @@ generatorsRouter.get('/generators', async (req, res) => {
     pending: pending.toString(),
     cap: cap.toString(),
     msUntilFull: filledUntilFull,
-    maxOfflineMs: GAME.MAX_OFFLINE_MS,
+    maxOfflineMs: capMs,
+    discount,
     catalog: GAME.GENERATORS.map((g: { id: string; label: string; emoji: string; price: bigint; tapsPerMin: number }) => ({
       id: g.id,
       label: g.label,
       emoji: g.emoji,
-      price: g.price.toString(),
+      price: discount > 0
+        ? ((g.price * BigInt(Math.round((1 - discount) * 100))) / 100n).toString()
+        : g.price.toString(),
+      basePrice: g.price.toString(),
       tapsPerMin: g.tapsPerMin,
     })),
   });
@@ -54,13 +63,20 @@ generatorsRouter.post('/generators/buy', async (req, res) => {
   if (!gen) return res.status(404).json({ error: 'no_such_generator' });
 
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
-  if (user.balance < gen.price) return res.status(400).json({ error: 'insufficient_funds' });
+
+  const skinDef: any = user.activeSkin ? (GAME.SKINS as any)[user.activeSkin] : null;
+  const discount: number = skinDef?.generatorDiscount ?? 0;
+  const price = discount > 0
+    ? (gen.price * BigInt(Math.round((1 - discount) * 100))) / 100n
+    : gen.price;
+
+  if (user.balance < price) return res.status(400).json({ error: 'insufficient_funds' });
 
   const owned = parseGenerators(user.generators);
   const next = addGenerator(owned, gen.id);
 
   const pending = pendingPassive(user);
-  const newBalance = user.balance - gen.price + pending;
+  const newBalance = user.balance - price + pending;
 
   const updated = await prisma.user.update({
     where: { id: user.id },
@@ -86,7 +102,12 @@ generatorsRouter.post('/generators/collect', async (req, res) => {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
   const pending = pendingPassive(user);
 
-  const newBalance = user.balance + pending;
+  const bonus = collectBonusFor(user.activeSkin);
+  const collected = bonus > 0
+    ? (pending * BigInt(100 + Math.round(bonus * 100))) / 100n
+    : pending;
+
+  const newBalance = user.balance + collected;
 
   const updated = await prisma.user.update({
     where: { id: user.id },
@@ -98,7 +119,8 @@ generatorsRouter.post('/generators/collect', async (req, res) => {
 
   res.json({
     ok: true,
-    collected: pending.toString(),
+    collected: collected.toString(),
+    bonus,
     balance: updated.balance.toString(),
   });
 });

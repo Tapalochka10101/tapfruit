@@ -10,7 +10,7 @@ export type TapModifiers = {
   upgradeMultiplier: number;
   dailyBonus: bigint;
   tapBonus: number;
-  special?: 'every50x5' | 'every25x10';
+  critChainChance: number;
 };
 
 export function getTapModifiers(user: User): TapModifiers {
@@ -22,7 +22,7 @@ export function getTapModifiers(user: User): TapModifiers {
   const critValue = def?.critValue ?? GAME.BASE_TAP;
   const dailyBonus = (def?.dailyBonus ?? 0n) as bigint;
   const tapBonus = def?.tapBonus ?? 0;
-  const special = def?.special;
+  const critChainChance = def?.critChainChance ?? 0;
 
   let boostMultiplier = 1;
   if (def?.boostMultiplier && user.bananaBoostUntil && user.bananaBoostUntil.getTime() > now) {
@@ -30,7 +30,7 @@ export function getTapModifiers(user: User): TapModifiers {
   }
 
   const upgradeMultiplier = GAME.upgradeMultiplier(user.upgradeLevel);
-  return { critChance, critValue, boostMultiplier, upgradeMultiplier, dailyBonus, tapBonus, special };
+  return { critChance, critValue, boostMultiplier, upgradeMultiplier, dailyBonus, tapBonus, critChainChance };
 }
 
 export type TapResult = {
@@ -46,18 +46,21 @@ export function computeTaps(user: User, startIdx: number, count: number): TapRes
   let sum = 0n;
   let crits = 0;
 
+  let lastWasCrit = false;
   for (let i = 0; i < count; i++) {
     const idx = startIdx + i;
-    const isCrit = rollCrit(seed, idx, mods.critChance);
-    if (isCrit) crits++;
+    let isCrit = rollCrit(seed, idx, mods.critChance);
+
+    if (!isCrit && lastWasCrit && mods.critChainChance > 0) {
+      const chainRoll = rollCrit(seed ^ 0xdeadbeef, idx, mods.critChainChance);
+      if (chainRoll) isCrit = true;
+    }
+
+    if (isCrit) { crits++; lastWasCrit = true; } else { lastWasCrit = false; }
 
     const base = isCrit ? mods.critValue : GAME.BASE_TAP;
     let mult = 1 + mods.tapBonus;
     mult *= mods.boostMultiplier;
-
-    const tapNum = idx + 1;
-    if (mods.special === 'every50x5' && tapNum % 50 === 0) mult *= 5;
-    if (mods.special === 'every25x10' && tapNum % 25 === 0) mult *= 10;
 
     const value = Math.round(base * mods.upgradeMultiplier * mult);
     sum += BigInt(value);

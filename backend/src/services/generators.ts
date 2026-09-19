@@ -41,17 +41,28 @@ export function pendingPassive(user: User): bigint {
   const def: any = skin ? (GAME.SKINS as any)[skin] : null;
   const offlineMult = def?.offlineMultiplier ?? 1;
   const passiveMult = 1 + (def?.passiveBonus ?? 0);
+  const capMs = def?.offlineCapHours ? def.offlineCapHours * 3_600_000 : GAME.MAX_OFFLINE_MS;
+  const elapsedCapped = Math.min(elapsed, capMs);
 
-  const minutes = elapsed / 60_000;
+  const minutes = elapsedCapped / 60_000;
   const taps = Math.floor(minutes * ratePerMin * offlineMult * passiveMult);
   return BigInt(taps);
 }
 
 /** Максимум за 8 часов — для прогресс-бара. */
-export function maxCappedPassive(owned: OwnedGenerator[]): bigint {
+export function maxCappedPassive(owned: OwnedGenerator[], activeSkin?: string | null): bigint {
   const ratePerMin = totalTapsPerMinute(owned);
-  const minutes = GAME.MAX_OFFLINE_MS / 60_000;
-  return BigInt(Math.floor(minutes * ratePerMin));
+  const def: any = activeSkin ? (GAME.SKINS as any)[activeSkin] : null;
+  const capMs = def?.offlineCapHours ? def.offlineCapHours * 3_600_000 : GAME.MAX_OFFLINE_MS;
+  const passiveMult = 1 + (def?.passiveBonus ?? 0);
+  const minutes = capMs / 60_000;
+  return BigInt(Math.floor(minutes * ratePerMin * passiveMult));
+}
+
+/** Бонус за сбор пассива (например, у авокадо +50%). */
+export function collectBonusFor(activeSkin?: string | null): number {
+  const def: any = activeSkin ? (GAME.SKINS as any)[activeSkin] : null;
+  return def?.collectBonus ?? 0;
 }
 
 export function addGenerator(owned: OwnedGenerator[], id: string): OwnedGenerator[] {

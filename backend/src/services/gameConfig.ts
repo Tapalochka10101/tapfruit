@@ -27,7 +27,10 @@ type Skin = {
   boostMultiplier?: number;
   boostDurationMs?: number;
   boostCooldownMs?: number;
-  special?: 'every50x5' | 'every25x10';
+  generatorDiscount?: number;
+  collectBonus?: number;
+  critChainChance?: number;
+  offlineCapHours?: number;
 };
 
 type DailyReward = { day: number; reward: bigint };
@@ -65,11 +68,11 @@ const SKINS: Record<string, Skin> = {
   peach:      { id: 'peach',      label: '🍑 Персик',         price: 750_000n,       passiveBonus: 0.4 },
   pineapple:  { id: 'pineapple',  label: '🍍 Ананас',         price: 2_000_000n,     critChance: 0.18,  critValue: 7 },
   mango:      { id: 'mango',      label: '🥭 Манго',          price: 10_000_000n,    passiveBonus: 1.0, tapBonus: 0.1 },
-  lemon:      { id: 'lemon',      label: '🍋 Лимон',          price: 25_000_000n,    passiveBonus: 1.5, tapBonus: 0.15 },
-  avocado:    { id: 'avocado',    label: '🥑 Авокадо',        price: 50_000_000n,    passiveBonus: 2.0, tapBonus: 0.2 },
-  blueberry:  { id: 'blueberry',  label: '🫐 Голубика',       price: 100_000_000n,   critChance: 0.25,  critValue: 10 },
-  coconut:    { id: 'coconut',    label: '🥥 Кокос',          price: 250_000_000n,   passiveBonus: 3.5, special: 'every50x5' },
-  dragonfruit:{ id: 'dragonfruit',label: '🐉 Драконий фрукт', price: 1_000_000_000n, passiveBonus: 5.0, special: 'every25x10' },
+  lemon:      { id: 'lemon',      label: '🍋 Лимон',          price: 25_000_000n,    passiveBonus: 1.0, tapBonus: 0.15, generatorDiscount: 0.2 },
+  avocado:    { id: 'avocado',    label: '🥑 Авокадо',        price: 50_000_000n,    passiveBonus: 1.5, tapBonus: 0.2, collectBonus: 0.5 },
+  blueberry:  { id: 'blueberry',  label: '🫐 Голубика',       price: 100_000_000n,   critChance: 0.25,  critValue: 10, critChainChance: 0.3 },
+  coconut:    { id: 'coconut',    label: '🥥 Кокос',          price: 250_000_000n,   passiveBonus: 3.0, offlineCapHours: 24 },
+  dragonfruit:{ id: 'dragonfruit',label: '🐉 Драконий фрукт', price: 1_000_000_000n, passiveBonus: 4.0, critChance: 0.35, critValue: 25 },
 };
 
 const SKIN_IDS: string[] = Object.keys(SKINS);
