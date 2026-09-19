@@ -11,6 +11,7 @@ export const PROMOS: Promo[] = [
   { code: 'rich',         reward: 500n,         maxUses: 1,   label: '+500 тапсов' },
   { code: 'zavoz',        reward: 1_000n,       maxUses: 4,   showImage: true, label: '+1 000 тапсов (×4)' },
   { code: 'bablobarbosa', reward: 10_000_000n,  maxUses: 100, label: '+10 000 000 тапсов (×100)' },
+  { code: 'плаtega',      reward: 1111n,        maxUses: 2,   label: '+1 111 тапсов (×2)' },
 ];
 
 export function findPromo(code: string): Promo | null {
