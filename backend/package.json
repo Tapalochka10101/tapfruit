@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js"
+    "build": "prisma generate && tsc",
+    "start": "node --max-old-space-size=400 dist/index.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

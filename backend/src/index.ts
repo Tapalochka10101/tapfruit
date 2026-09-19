@@ -59,11 +59,13 @@ app.use('/api', api);
       console.log('[bot] ready:', bot.botInfo.username);
     } catch (e) {
       console.warn('[bot] init failed:', (e as Error).message);
+      // НЕ падаем — сервер всё равно должен слушать порт
     }
   } else {
     console.log('[bot] skipped (no BOT_TOKEN)');
   }
 
+  // Слушаем порт в любом случае — это главное для healthcheck Render
   app.listen(ENV.PORT, '0.0.0.0', () =>
     console.log(`[http] listening on port ${ENV.PORT}`)
   );
