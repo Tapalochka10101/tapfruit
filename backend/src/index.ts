@@ -8,7 +8,6 @@ const hasBot = ENV.BOT_TOKEN && ENV.BOT_TOKEN.includes(':') && !ENV.BOT_TOKEN.st
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.resolve(__dirname, '..', 'public');
 import cors from 'cors';
-// // // // // import { prisma } from './lib/prisma.js'; // TEMP // TEMP // TEMP // TEMP // TEMP
 import { authMiddleware } from './middleware/auth.js';
 import { authRouter } from './routes/auth.js';
 import { tapRouter } from './routes/tap.js';
@@ -51,7 +50,6 @@ api.get('/referral', (req, res) => { res.json({ url: buildReferralLink(req.tgId!
 app.use('/api', api);
 
 (async () => {
-  const hasBot = false; // TEMP
   if (hasBot) {
     try {
       const webhookUrl = `${ENV.PUBLIC_BACKEND_URL}/telegram/webhook`;
