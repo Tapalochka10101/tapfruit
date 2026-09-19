@@ -1,8 +1,10 @@
 import { ENV } from './env.js';
 import './lib/serialize.js';
+import { prisma } from './lib/prisma.js';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+const hasBot = ENV.BOT_TOKEN && ENV.BOT_TOKEN.includes(':') && !ENV.BOT_TOKEN.startsWith('PASTE');
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.resolve(__dirname, '..', 'public');
 import cors from 'cors';
