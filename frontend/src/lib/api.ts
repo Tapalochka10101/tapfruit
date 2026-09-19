@@ -40,6 +40,14 @@ export const api = {
     req<any>('/minigames/sell-chips', { method: 'POST', body: JSON.stringify({ chips }) }),
   sellAllChips: () =>
     req<any>('/minigames/sell-all-chips', { method: 'POST' }),
+  wordStart: (bet: number, wordLength: 3 | 4 | 5) =>
+    req<any>('/minigames/word/start', { method: 'POST', body: JSON.stringify({ bet, wordLength }) }),
+  wordGuess: (sessionId: string, letter: string) =>
+    req<any>('/minigames/word/guess', { method: 'POST', body: JSON.stringify({ sessionId, letter }) }),
+  tttStart: (bet: number) =>
+    req<any>('/minigames/tictactoe/start', { method: 'POST', body: JSON.stringify({ bet }) }),
+  tttMove: (sessionId: string, cell: number) =>
+    req<any>('/minigames/tictactoe/move', { method: 'POST', body: JSON.stringify({ sessionId, cell }) }),
   playMinigame: (gameId: string, bet: number, choice: string) =>
     req<any>('/minigames/play', { method: 'POST', body: JSON.stringify({ gameId, bet, choice }) }),
   getGenerators: () => req<any>('/generators'),
