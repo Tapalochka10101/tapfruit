@@ -27,7 +27,7 @@ const GAMES: Game[] = [
 ];
 
 const BETS = [10, 50, 100, 500, 5000];
-const CHIP_PACKS = [10, 50, 100, 500, 5000];
+const CHIP_PACKS = [10, 100, 1000];
 const TAPS_PER_CHIP = 100;
 
 type Result = { won: boolean; detail: string; roll: string; visual?: string; bet: number; choice: string };
@@ -124,7 +124,7 @@ export function MinigamesSheet({ open, onClose }: { open: boolean; onClose: () =
         <div className="mb-4 space-y-3">
           <div>
             <div className="text-xs text-[var(--tg-hint)] mb-1 font-bold">💰 Купить фишки</div>
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
               {CHIP_PACKS.map(n => {
                 const taps = n * TAPS_PER_CHIP;
                 const can = balance >= taps;
@@ -146,7 +146,7 @@ export function MinigamesSheet({ open, onClose }: { open: boolean; onClose: () =
           </div>
           <div>
             <div className="text-xs text-[var(--tg-hint)] mb-1 font-bold">💵 Продать фишки</div>
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
               {CHIP_PACKS.map(n => {
                 const can = chips >= n;
                 return (
@@ -231,7 +231,7 @@ export function MinigamesSheet({ open, onClose }: { open: boolean; onClose: () =
 
             <div>
               <div className="text-xs text-[var(--tg-hint)] mb-2 text-center">Количество</div>
-              <div className="grid grid-cols-5 gap-1.5">
+              <div className="grid grid-cols-3 gap-1.5">
                 {BETS.map(b => (
                   <button
                     key={b}
