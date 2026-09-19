@@ -23,6 +23,7 @@ import { useHaptics } from './hooks/useHaptics';
 import { useSound } from './hooks/useSound';
 import { rollCrit } from './lib/prng';
 import { GAME_CONFIG } from './lib/gameConfig';
+import { getSkinStats } from './lib/skinStats';
 
 let uid = 0;
 
@@ -60,24 +61,25 @@ export default function App() {
     const y = e.clientY;
 
     const skin = useGame.getState().activeSkin;
-    let critChance = 0;
-    if (skin === 'pear') critChance = GAME_CONFIG.pearCritChance;
-    if (skin === 'strawberry') critChance = GAME_CONFIG.strawberryCritChance;
-    if (skin === 'blueberry') critChance = GAME_CONFIG.blueberryCritChance;
+    const st = getSkinStats(skin);
 
     const idx = useGame.getState().tapIndex + sessionIdxRef.current;
-    const isCrit = rollCrit(seed, idx, critChance);
+    const isCrit = rollCrit(seed, idx, st.critChance);
     sessionIdxRef.current++;
 
     const upgradeMult = GAME_CONFIG.upgradeMultipliers[upgradeLevel] ?? 1;
     const bananaActive = boostUntil != null && boostUntil > Date.now();
-    const boostMult = bananaActive ? 5 : 1;
-    const base = isCrit ? GAME_CONFIG.critValue : 1;
-    // 🥝 KIWI: +25% ко всем тапам
-    const kiwiMult = skin === 'kiwi' ? 1.25 : 1;
-    // 🥭 MANGO: ×3 ко всем тапам (за 5 лямов — пассивный)
-    const mangoMult = skin === 'mango' ? 3 : 1;
-    const value = Math.round(base * upgradeMult * boostMult * kiwiMult * mangoMult);
+    const boostMult = bananaActive ? st.boostMultiplier : 1;
+    const base = isCrit ? st.critValue : 1;
+
+    let mult = 1 + st.tapBonus;
+    mult *= boostMult;
+
+    const tapNum = idx + 1;
+    if (st.special === 'every50x5' && tapNum % 50 === 0) mult *= 5;
+    if (st.special === 'every25x10' && tapNum % 25 === 0) mult *= 10;
+
+    const value = Math.round(base * upgradeMult * mult);
 
     addOptimistic(value);
     registerTap();
