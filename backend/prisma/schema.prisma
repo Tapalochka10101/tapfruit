@@ -98,3 +98,9 @@ model Payment {
 
   @@index([userId, status])
 }
+
+model Admin {
+  username  String   @id
+  addedBy   String
+  addedAt   DateTime @default(now())
+}

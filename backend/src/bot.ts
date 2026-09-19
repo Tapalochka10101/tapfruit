@@ -342,23 +342,52 @@ bot.command('grant', async ctx => {
 
 
 /** 👑 Админ-панель. Только для @yolotag52. */
-const ADMIN_USERNAME = 'yolotag52';
+const ROOT_ADMIN = 'yolotag52';
+const adminCache = new Set<string>([ROOT_ADMIN]);
 
 type AdminAction = 'grant_sub' | 'remove_sub' | 'grant_taps' | 'remove_taps';
 type PrankType = 'balance' | 'ban' | 'gift' | 'zero' | 'hack';
 type AdminPending =
   | { step: 'await_username'; action: AdminAction }
   | { step: 'await_amount'; action: AdminAction; targetUserId: string; targetName: string }
-  | { step: 'await_prank_username'; prankType: PrankType };
+  | { step: 'await_prank_username'; prankType: PrankType }
+  | { step: 'await_admin_add' }
+  | { step: 'await_admin_remove' };
 
 const pendingAdmin = new Map<number, AdminPending>();
 
 function isAdmin(tgUsername?: string | null): boolean {
-  return (tgUsername ?? '').toLowerCase() === ADMIN_USERNAME;
+  if (!tgUsername) return false;
+  return adminCache.has(tgUsername.toLowerCase());
 }
 
-function adminMenu() {
-  return new InlineKeyboard()
+function isRootAdmin(tgUsername?: string | null): boolean {
+  return (tgUsername ?? '').toLowerCase() === ROOT_ADMIN;
+}
+
+export async function loadAdmins(): Promise<void> {
+  try {
+    await prisma.$executeRawUnsafe(
+      'CREATE TABLE IF NOT EXISTS "Admin" (' +
+      '"username" TEXT NOT NULL, ' +
+      '"addedBy" TEXT NOT NULL, ' +
+      '"addedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
+      'CONSTRAINT "Admin_pkey" PRIMARY KEY ("username"))'
+    );
+  } catch (e) {
+    console.warn('[admin] create table failed:', (e as Error).message);
+  }
+  try {
+    const rows = await prisma.admin.findMany({ select: { username: true } });
+    for (const r of rows) adminCache.add(r.username.toLowerCase());
+    console.log('[admin] loaded', adminCache.size, 'admins:', [...adminCache].join(','));
+  } catch (e) {
+    console.warn('[admin] load failed:', (e as Error).message);
+  }
+}
+
+function adminMenu(forUsername?: string | null) {
+  const kb = new InlineKeyboard()
     .text('➕ Выдать подписку', 'admin_grant_sub')
     .text('➖ Забрать подписку', 'admin_remove_sub')
     .row()
@@ -366,10 +395,14 @@ function adminMenu() {
     .text('➖ Забрать тапсы', 'admin_remove_taps')
     .row()
     .text('📋 Список юзеров', 'admin_users')
-    .row()
-    .text('🎭 ПРАНК', 'admin_prank')
+    .row();
+  if (isRootAdmin(forUsername)) {
+    kb.text('👥 Админы', 'admin_list_admins').row();
+  }
+  kb.text('🎭 ПРАНК', 'admin_prank')
     .row()
     .text('⬅️ Закрыть', 'admin_close');
+  return kb;
 }
 
 function prankMenu() {
@@ -435,7 +468,7 @@ bot.command('admin', async ctx => {
   pendingAdmin.delete(ctx.from.id);
   await ctx.reply('👑 <b>Админ-панель</b>\n\nВыбери действие:', {
     parse_mode: 'HTML',
-    reply_markup: adminMenu(),
+    reply_markup: adminMenu(ctx.from.username),
   });
 });
 
@@ -445,7 +478,7 @@ bot.callbackQuery('admin_menu', async ctx => {
   pendingAdmin.delete(ctx.from.id);
   await ctx.editMessageText('👑 <b>Админ-панель</b>\n\nВыбери действие:', {
     parse_mode: 'HTML',
-    reply_markup: adminMenu(),
+    reply_markup: adminMenu(ctx.from.username),
   });
 });
 
@@ -501,6 +534,43 @@ bot.callbackQuery('prank_gift', beginPrank('gift'));
 bot.callbackQuery('prank_zero', beginPrank('zero'));
 bot.callbackQuery('prank_hack', beginPrank('hack'));
 
+bot.callbackQuery('admin_list_admins', async ctx => {
+  await ctx.answerCallbackQuery();
+  if (!ctx.from || !isRootAdmin(ctx.from.username)) return;
+  const list = [...adminCache].map(u => '• @' + u).join('\n');
+  await ctx.editMessageText(
+    '👥 <b>Админы</b>\n\n' + list,
+    {
+      parse_mode: 'HTML',
+      reply_markup: new InlineKeyboard()
+        .text('➕ Добавить', 'admin_add_admin')
+        .text('➖ Удалить', 'admin_remove_admin')
+        .row()
+        .text('⬅️ Назад', 'admin_menu'),
+    },
+  );
+});
+
+bot.callbackQuery('admin_add_admin', async ctx => {
+  await ctx.answerCallbackQuery();
+  if (!ctx.from || !isRootAdmin(ctx.from.username)) return;
+  pendingAdmin.set(ctx.from.id, { step: 'await_admin_add' });
+  await ctx.editMessageText(
+    '✏️ Отправь @username нового админа.',
+    { reply_markup: new InlineKeyboard().text('⬅️ Отмена', 'admin_close') },
+  );
+});
+
+bot.callbackQuery('admin_remove_admin', async ctx => {
+  await ctx.answerCallbackQuery();
+  if (!ctx.from || !isRootAdmin(ctx.from.username)) return;
+  pendingAdmin.set(ctx.from.id, { step: 'await_admin_remove' });
+  await ctx.editMessageText(
+    '✏️ Отправь @username админа для удаления.',
+    { reply_markup: new InlineKeyboard().text('⬅️ Отмена', 'admin_close') },
+  );
+});
+
 bot.callbackQuery('admin_users', async ctx => {
   await ctx.answerCallbackQuery();
   if (!ctx.from || !isAdmin(ctx.from.username)) return;
@@ -544,6 +614,40 @@ bot.callbackQuery('admin_users', async ctx => {
 bot.on('message:text', async ctx => {
   if (!ctx.from) return;
   const state = pendingAdmin.get(ctx.from.id);
+  if (state && (state.step === 'await_admin_add' || state.step === 'await_admin_remove') && ctx.from && isRootAdmin(ctx.from.username)) {
+    const text = (ctx.message?.text ?? '').trim();
+    if (!text.startsWith('@')) {
+      await ctx.reply('Нужен ник в формате @username.');
+      return;
+    }
+    const username = text.slice(1).toLowerCase();
+    if (state.step === 'await_admin_add') {
+      if (username === ROOT_ADMIN || adminCache.has(username)) {
+        await ctx.reply('ℹ️ @' + username + ' уже админ.');
+      } else {
+        try {
+          await prisma.admin.create({ data: { username, addedBy: ctx.from.username ?? ROOT_ADMIN } });
+          adminCache.add(username);
+          await ctx.reply('✅ @' + username + ' теперь админ.');
+        } catch (e: any) {
+          await ctx.reply('❌ Не смог добавить: ' + (e?.message ?? 'unknown'));
+        }
+      }
+    } else {
+      if (username === ROOT_ADMIN) {
+        await ctx.reply('❌ Главного админа удалить нельзя.');
+      } else if (!adminCache.has(username)) {
+        await ctx.reply('ℹ️ @' + username + ' не админ.');
+      } else {
+        await prisma.admin.delete({ where: { username } }).catch(() => {});
+        adminCache.delete(username);
+        await ctx.reply('✅ @' + username + ' удалён из админов.');
+      }
+    }
+    pendingAdmin.delete(ctx.from.id);
+    return;
+  }
+
   if (state && state.step === 'await_prank_username' && ctx.from && isAdmin(ctx.from.username)) {
     const text = (ctx.message?.text ?? '').trim();
     if (!text.startsWith('@')) {
