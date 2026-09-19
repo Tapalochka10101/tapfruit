@@ -9,7 +9,7 @@ const MIN_BET = 10;
 const MAX_BET = 5000;
 
 // 🎲 Шансы
-const WIN_CHANCE = 0.30;   // 30% выигрыш
+const WIN_CHANCE = 0.40;   // 40% выигрыш
 const LOSE_CHANCE = 0.70;  // 70% проигрыш
 
 const BuyChipsSchema = z.object({
@@ -112,7 +112,7 @@ const PlaySchema = z.object({
   choice: z.string(),
 });
 
-/** 🎲 30% выигрыш ×2, 70% проигрыш −bet */
+/** 🎲 40% выигрыш ×2, 60% проигрыш −bet */
 minigamesRouter.post('/minigames/play', async (req, res) => {
   const parsed = PlaySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'bad_payload' });
