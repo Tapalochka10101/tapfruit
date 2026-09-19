@@ -57,10 +57,14 @@ const TXT = {
 
 /** /start */
 bot.command('start', async ctx => {
-  await ctx.reply(
-    '🍎 <b>Tap Fruit</b>\n\nВыбери действие:',
-    { reply_markup: mainMenu(), parse_mode: 'HTML' },
-  );
+  try {
+    await ctx.reply(
+      '🍎 <b>Tap Fruit</b>\n\nВыбери действие:',
+      { reply_markup: mainMenu(), parse_mode: 'HTML' },
+    );
+  } catch (e) {
+    console.error('[start] error:', e);
+  }
 });
 
 /** Кнопка БАЛАНС → тарифы. */
