@@ -23,12 +23,7 @@ html[data-theme='dark'] {
 }
 
 html, body, #root {
-  height: 100vh;
-  height: 100dvh;
-  height: var(--tg-viewport-height, 100dvh);
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-  box-sizing: border-box;
+  height: 100%;
   margin: 0;
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;

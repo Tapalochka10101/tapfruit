@@ -117,7 +117,15 @@ export default function App() {
   const [subscriptionInfoOpen, setSubscriptionInfoOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden">
+    <div
+      className="flex flex-col relative overflow-hidden"
+      style={{
+        height: 'var(--tg-viewport-height, 100dvh)',
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        boxSizing: 'border-box',
+      }}
+    >
       <div className="app-bg"><div className="blob3" /></div>
 
       <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
