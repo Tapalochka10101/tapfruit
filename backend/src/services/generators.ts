@@ -38,11 +38,12 @@ export function pendingPassive(user: User): bigint {
   const elapsed = Math.min(now - last, GAME.MAX_OFFLINE_MS);
 
   const skin = user.activeSkin;
-  let offlineMult = 1;
-  if (skin === 'cherry') offlineMult = 2;
+  const def: any = skin ? (GAME.SKINS as any)[skin] : null;
+  const offlineMult = def?.offlineMultiplier ?? 1;
+  const passiveMult = 1 + (def?.passiveBonus ?? 0);
 
   const minutes = elapsed / 60_000;
-  const taps = Math.floor(minutes * ratePerMin * offlineMult);
+  const taps = Math.floor(minutes * ratePerMin * offlineMult * passiveMult);
   return BigInt(taps);
 }
 

@@ -9,31 +9,28 @@ export type TapModifiers = {
   boostMultiplier: number;
   upgradeMultiplier: number;
   dailyBonus: bigint;
+  tapBonus: number;
+  special?: 'every50x5' | 'every25x10';
 };
 
 export function getTapModifiers(user: User): TapModifiers {
   const now = Date.now();
   const skin = user.activeSkin as SkinId | null;
+  const def: any = skin ? (GAME.SKINS as any)[skin] : null;
 
-  let critChance = 0;
-  let critValue: number = GAME.BASE_TAP;
+  const critChance = def?.critChance ?? 0;
+  const critValue = def?.critValue ?? GAME.BASE_TAP;
+  const dailyBonus = (def?.dailyBonus ?? 0n) as bigint;
+  const tapBonus = def?.tapBonus ?? 0;
+  const special = def?.special;
+
   let boostMultiplier = 1;
-  let dailyBonus: bigint = 0n;
+  if (def?.boostMultiplier && user.bananaBoostUntil && user.bananaBoostUntil.getTime() > now) {
+    boostMultiplier = def.boostMultiplier;
+  }
 
   const upgradeMultiplier = GAME.upgradeMultiplier(user.upgradeLevel);
-
-  if (skin === 'pear') {
-    critChance = Number(GAME.SKINS.pear.critChance ?? 0);
-    critValue = Number(GAME.SKINS.pear.critValue ?? GAME.BASE_TAP);
-  }
-  if (skin === 'orange') {
-    dailyBonus = BigInt(GAME.SKINS.orange.dailyBonus ?? 0);
-  }
-  if (skin === 'banana' && user.bananaBoostUntil && user.bananaBoostUntil.getTime() > now) {
-    boostMultiplier = Number(GAME.SKINS.banana.boostMultiplier ?? 1);
-  }
-
-  return { critChance, critValue, boostMultiplier, upgradeMultiplier, dailyBonus };
+  return { critChance, critValue, boostMultiplier, upgradeMultiplier, dailyBonus, tapBonus, special };
 }
 
 export type TapResult = {
@@ -55,7 +52,14 @@ export function computeTaps(user: User, startIdx: number, count: number): TapRes
     if (isCrit) crits++;
 
     const base = isCrit ? mods.critValue : GAME.BASE_TAP;
-    const value = Math.round(base * mods.upgradeMultiplier * mods.boostMultiplier);
+    let mult = 1 + mods.tapBonus;
+    mult *= mods.boostMultiplier;
+
+    const tapNum = idx + 1;
+    if (mods.special === 'every50x5' && tapNum % 50 === 0) mult *= 5;
+    if (mods.special === 'every25x10' && tapNum % 25 === 0) mult *= 10;
+
+    const value = Math.round(base * mods.upgradeMultiplier * mult);
     sum += BigInt(value);
   }
 
@@ -63,9 +67,12 @@ export function computeTaps(user: User, startIdx: number, count: number): TapRes
 }
 
 export function tryClaimDaily(user: User): { claimed: boolean; amount: bigint } {
-  if (user.activeSkin !== 'orange') return { claimed: false, amount: 0n };
+  const skin = user.activeSkin as SkinId | null;
+  const def: any = skin ? (GAME.SKINS as any)[skin] : null;
+  const bonus = (def?.dailyBonus ?? 0n) as bigint;
+  if (bonus <= 0n) return { claimed: false, amount: 0n };
   if (user.lastDailyClaim && sameMskDay(user.lastDailyClaim, new Date())) {
     return { claimed: false, amount: 0n };
   }
-  return { claimed: true, amount: BigInt(GAME.SKINS.orange.dailyBonus ?? 0) };
+  return { claimed: true, amount: bonus };
 }

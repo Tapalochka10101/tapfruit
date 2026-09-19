@@ -18,14 +18,16 @@ type Skin = {
   id: string;
   label: string;
   price: bigint;
-  dailyBonus?: bigint;
+  tapBonus?: number;
+  passiveBonus?: number;
   critChance?: number;
   critValue?: number;
-  passiveBonus?: number;
   offlineMultiplier?: number;
+  dailyBonus?: bigint;
   boostMultiplier?: number;
   boostDurationMs?: number;
   boostCooldownMs?: number;
+  special?: 'every50x5' | 'every25x10';
 };
 
 type DailyReward = { day: number; reward: bigint };
@@ -53,24 +55,21 @@ const GENERATORS: Generator[] = [
 ];
 
 const SKINS: Record<string, Skin> = {
-  orange:     { id: 'orange',     label: '🍊 Апельсин',  price: 500n,       dailyBonus: 100n },
-  pear:       { id: 'pear',       label: '🍐 Груша',     price: 2_000n,     critChance: 0.07, critValue: 7 },
-  banana:     { id: 'banana',     label: '🍌 Банан',     price: 5_000n,
-                boostMultiplier: 5,  boostDurationMs: 15_000, boostCooldownMs: 30 * 60_000 },
-  grape:      { id: 'grape',      label: '🍇 Виноград',  price: 15_000n,    passiveBonus: 0.05 },
-  strawberry: { id: 'strawberry', label: '🍓 Клубника',  price: 40_000n,    critChance: 0.15, critValue: 7 },
-  cherry:     { id: 'cherry',     label: '🍒 Вишня',     price: 100_000n,   offlineMultiplier: 2 },
-  kiwi:       { id: 'kiwi',       label: '🥝 Киви',      price: 250_000n,
-                boostMultiplier: 10, boostDurationMs: 10_000, boostCooldownMs: 60 * 60_000 },
-  peach:      { id: 'peach',      label: '🍑 Персик',    price: 750_000n,   passiveBonus: 0.3 },
-  pineapple:  { id: 'pineapple',  label: '🍍 Ананас',    price: 2_000_000n, passiveBonus: 0.5 },
-  mango:      { id: 'mango',      label: '🥭 Манго',     price: 10_000_000n, passiveBonus: 1.0,
-                boostMultiplier: 10, boostDurationMs: 20_000, boostCooldownMs: 60 * 60_000 },
-  lemon:      { id: 'lemon',      label: '🍋 Лимон',     price: 25_000_000n,  passiveBonus: 0.8 },
-  avocado:    { id: 'avocado',    label: '🥑 Авокадо',   price: 50_000_000n,  passiveBonus: 1.0 },
-  blueberry:  { id: 'blueberry',  label: '🫐 Голубика',  price: 100_000_000n, critChance: 0.2, critValue: 7 },
-  coconut:    { id: 'coconut',    label: '🥥 Кокос',     price: 250_000_000n, dailyBonus: 500n },
-  dragonfruit:{ id: 'dragonfruit',label: '🐉 Драконий фрукт', price: 1_000_000_000n, passiveBonus: 2.0 },
+  orange:     { id: 'orange',     label: '🍊 Апельсин',       price: 500n,           tapBonus: 0.03,    dailyBonus: 100n },
+  pear:       { id: 'pear',       label: '🍐 Груша',          price: 2_000n,         critChance: 0.07,  critValue: 3 },
+  banana:     { id: 'banana',     label: '🍌 Банан',          price: 5_000n,         boostMultiplier: 2, boostDurationMs: 30_000, boostCooldownMs: 5 * 60_000 },
+  grape:      { id: 'grape',      label: '🍇 Виноград',       price: 15_000n,        tapBonus: 0.07,    passiveBonus: 0.05 },
+  strawberry: { id: 'strawberry', label: '🍓 Клубника',       price: 40_000n,        critChance: 0.12,  critValue: 5 },
+  cherry:     { id: 'cherry',     label: '🍒 Вишня',          price: 100_000n,       tapBonus: 0.15,    offlineMultiplier: 2 },
+  kiwi:       { id: 'kiwi',       label: '🥝 Киви',           price: 250_000n,       tapBonus: 0.25 },
+  peach:      { id: 'peach',      label: '🍑 Персик',         price: 750_000n,       passiveBonus: 0.4 },
+  pineapple:  { id: 'pineapple',  label: '🍍 Ананас',         price: 2_000_000n,     critChance: 0.18,  critValue: 7 },
+  mango:      { id: 'mango',      label: '🥭 Манго',          price: 10_000_000n,    passiveBonus: 1.0, tapBonus: 0.1 },
+  lemon:      { id: 'lemon',      label: '🍋 Лимон',          price: 25_000_000n,    passiveBonus: 1.5, tapBonus: 0.15 },
+  avocado:    { id: 'avocado',    label: '🥑 Авокадо',        price: 50_000_000n,    passiveBonus: 2.0, tapBonus: 0.2 },
+  blueberry:  { id: 'blueberry',  label: '🫐 Голубика',       price: 100_000_000n,   critChance: 0.25,  critValue: 10 },
+  coconut:    { id: 'coconut',    label: '🥥 Кокос',          price: 250_000_000n,   passiveBonus: 3.5, special: 'every50x5' },
+  dragonfruit:{ id: 'dragonfruit',label: '🐉 Драконий фрукт', price: 1_000_000_000n, passiveBonus: 5.0, special: 'every25x10' },
 };
 
 const SKIN_IDS: string[] = Object.keys(SKINS);
