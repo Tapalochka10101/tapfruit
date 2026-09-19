@@ -216,6 +216,15 @@ type WordSession = {
 };
 
 const wordSessions = new Map<string, WordSession>();
+type TttSession = {
+  userId: string;
+  bet: number;
+  board: string[];
+  turn: 'player' | 'bot';
+  startedAt: number;
+  finished: boolean;
+};
+
 const tttSessions = new Map<string, TttSession>();
 
 function newSessionId(): string {
