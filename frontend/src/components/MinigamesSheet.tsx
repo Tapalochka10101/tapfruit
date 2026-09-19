@@ -27,9 +27,10 @@ const GAMES: Game[] = [
 ];
 
 const BETS = [10, 50, 100, 500];
+const CHIP_PACKS = [10, 50, 100, 500, 5000];
 const TAPS_PER_CHIP = 100;
 
-type Result = { won: boolean; detail: string; roll: string; bet: number; choice: string };
+type Result = { won: boolean; detail: string; roll: string; visual?: string; bet: number; choice: string };
 
 export function MinigamesSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
@@ -66,6 +67,17 @@ export function MinigamesSheet({ open, onClose }: { open: boolean; onClose: () =
     }
   };
 
+  const sellAllChips = async () => {
+    if (chips <= 0) return;
+    try {
+      const r = await api.sellAllChips();
+      setBalance(Number(r.balance));
+      setChips(Number(r.chips));
+    } catch (e: any) {
+      alert(e?.body?.error || 'Error');
+    }
+  };
+
   const play = async (choice: 'A' | 'B') => {
     if (!selectedGame || playing) return;
     setPlaying(true);
@@ -73,7 +85,7 @@ export function MinigamesSheet({ open, onClose }: { open: boolean; onClose: () =
     try {
       const r = await api.playMinigame(selectedGame.id, bet, choice);
       setChips(Number(r.chips));
-      const res: Result = { won: r.won, detail: r.detail, roll: r.roll, bet, choice };
+      const res: Result = { won: r.won, detail: r.detail, roll: r.roll, visual: r.visual, bet, choice };
       setLastResult(res);
       setHistory(h => [res, ...h].slice(0, 10));
     } catch (e: any) {
@@ -109,29 +121,61 @@ export function MinigamesSheet({ open, onClose }: { open: boolean; onClose: () =
       )}
 
       {!selectedGame && (
-        <div className="mb-4 grid grid-cols-2 gap-2">
-          <button
-            onClick={() => buyChips(1000)}
-            disabled={balance < 1000}
-            className={`py-3 rounded-2xl font-bold text-sm transition ${
-              balance >= 1000
-                ? 'bg-green-500 text-white active:scale-95'
-                : 'bg-gray-300 text-gray-500'
-            }`}
-          >
-            +10 🪙 (1к тапов)
-          </button>
-          <button
-            onClick={() => sellChips(10)}
-            disabled={chips < 10}
-            className={`py-3 rounded-2xl font-bold text-sm transition ${
-              chips >= 10
-                ? 'bg-orange-500 text-white active:scale-95'
-                : 'bg-gray-300 text-gray-500'
-            }`}
-          >
-            −10 🪙 → 1к тапов
-          </button>
+        <div className="mb-4 space-y-3">
+          <div>
+            <div className="text-xs text-[var(--tg-hint)] mb-1 font-bold">💰 Купить фишки</div>
+            <div className="grid grid-cols-5 gap-1.5">
+              {CHIP_PACKS.map(n => {
+                const taps = n * TAPS_PER_CHIP;
+                const can = balance >= taps;
+                return (
+                  <button
+                    key={'buy' + n}
+                    onClick={() => buyChips(taps)}
+                    disabled={!can}
+                    className={`py-2 rounded-xl font-bold text-xs transition flex flex-col items-center ${
+                      can ? 'bg-green-500 text-white active:scale-95' : 'bg-gray-300 text-gray-500'
+                    }`}
+                  >
+                    <span className="text-base leading-tight">+{n}</span>
+                    <span className="opacity-80 text-[9px] leading-tight">{fmt(taps)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-[var(--tg-hint)] mb-1 font-bold">💵 Продать фишки</div>
+            <div className="grid grid-cols-5 gap-1.5">
+              {CHIP_PACKS.map(n => {
+                const can = chips >= n;
+                return (
+                  <button
+                    key={'sell' + n}
+                    onClick={() => sellChips(n)}
+                    disabled={!can}
+                    className={`py-2 rounded-xl font-bold text-xs transition flex flex-col items-center ${
+                      can ? 'bg-orange-500 text-white active:scale-95' : 'bg-gray-300 text-gray-500'
+                    }`}
+                  >
+                    <span className="text-base leading-tight">−{n}</span>
+                    <span className="opacity-80 text-[9px] leading-tight">{fmt(n * TAPS_PER_CHIP)}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={sellAllChips}
+              disabled={chips <= 0}
+              className={`mt-2 w-full py-3 rounded-2xl font-black text-sm transition ${
+                chips > 0
+                  ? 'bg-gradient-to-br from-amber-400 to-orange-600 text-white active:scale-95'
+                  : 'bg-gray-300 text-gray-500'
+              }`}
+            >
+              💰 Продать ВСЁ ({fmt(chips)} 🪙 → {fmt(chips * TAPS_PER_CHIP)} тапов)
+            </button>
+          </div>
         </div>
       )}
 
@@ -211,10 +255,20 @@ export function MinigamesSheet({ open, onClose }: { open: boolean; onClose: () =
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0, opacity: 0 }}
-                  className={`text-center py-4 rounded-2xl font-black ${
+                  className={`text-center py-5 rounded-2xl font-black overflow-hidden ${
                     lastResult.won ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
                   }`}
                 >
+                  {lastResult.visual && (
+                    <motion.div
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: [0, 1.4, 1], rotate: 0 }}
+                      transition={{ duration: 0.6, times: [0, 0.6, 1] }}
+                      className="text-7xl mb-2 drop-shadow-lg"
+                    >
+                      {lastResult.visual}
+                    </motion.div>
+                  )}
                   <div className="text-2xl mb-1">
                     {lastResult.won
                       ? '🎉 ВЫИГРАЛ +' + lastResult.bet * 2

@@ -38,6 +38,8 @@ export const api = {
     req<any>('/minigames/buy-chips', { method: 'POST', body: JSON.stringify({ taps }) }),
   sellChips: (chips: number) =>
     req<any>('/minigames/sell-chips', { method: 'POST', body: JSON.stringify({ chips }) }),
+  sellAllChips: () =>
+    req<any>('/minigames/sell-all-chips', { method: 'POST' }),
   playMinigame: (gameId: string, bet: number, choice: string) =>
     req<any>('/minigames/play', { method: 'POST', body: JSON.stringify({ gameId, bet, choice }) }),
   getGenerators: () => req<any>('/generators'),
