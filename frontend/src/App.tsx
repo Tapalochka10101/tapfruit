@@ -137,7 +137,7 @@ export default function App() {
       </div>
 
       {/* Топбар — наверху */}
-      <div className="relative z-50 pt-14">
+      <div className="relative z-50 pt-[76px]">
         <TopBar
           onSettings={() => setSettingsOpen(true)}
           onDaily={() => setDailyOpen(true)}
