@@ -26,7 +26,7 @@ const GAMES: Game[] = [
   { id: 'star',      emoji: '⭐', title: 'Звезда',  labelA: 'Вверх',   labelB: 'Вниз' },
 ];
 
-const BETS = [10, 50, 100, 500];
+const BETS = [10, 50, 100, 500, 5000];
 const CHIP_PACKS = [10, 50, 100, 500, 5000];
 const TAPS_PER_CHIP = 100;
 
@@ -231,20 +231,20 @@ export function MinigamesSheet({ open, onClose }: { open: boolean; onClose: () =
 
             <div>
               <div className="text-xs text-[var(--tg-hint)] mb-2 text-center">Количество</div>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-5 gap-1.5">
                 {BETS.map(b => (
                   <button
                     key={b}
                     onClick={() => setBet(b)}
                     disabled={chips < b}
-                    className={`flex-1 py-3 rounded-xl font-bold text-sm transition ${
+                    className={`py-3 rounded-xl font-bold text-xs transition ${
                       bet === b
                         ? 'bg-brand text-white'
                         : chips >= b
                           ? 'bg-[var(--tg-card)]'
                           : 'bg-gray-200 text-gray-400'
                     }`}
-                  >{b}</button>
+                  >{b >= 1000 ? (b/1000) + 'к' : b}</button>
                 ))}
               </div>
             </div>
