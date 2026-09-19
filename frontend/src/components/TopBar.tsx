@@ -24,7 +24,7 @@ export function TopBar({
   return (
     <div
       className="flex items-center justify-between px-4 pb-3 relative z-20"
-      style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)' }}
+      style={{ paddingTop: 60 }}
     >
       {/* ПОДПИСКА слева */}
       <button

@@ -32,7 +32,7 @@ export function SubscriptionGate() {
   if (step === 'plan') {
     return (
       <div className="flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-amber-50 to-orange-100 overflow-y-auto"
-        style={{ minHeight: 'var(--tg-viewport-height, 100dvh)', paddingTop: 'max(env(safe-area-inset-top, 0px), 20px)' }}>
+        style={{ minHeight: 'var(--tg-viewport-height, 100dvh)', paddingTop: 60 }}>
         <div className="text-5xl mb-3">🍎</div>
         <h1 className="text-xl font-black mb-2">Чтобы начать игру</h1>
         <p className="text-sm text-gray-700 mb-4 max-w-xs">
@@ -88,7 +88,7 @@ export function SubscriptionGate() {
   if (step === 'method') {
     return (
       <div className="flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-amber-50 to-orange-100"
-        style={{ minHeight: 'var(--tg-viewport-height, 100dvh)', paddingTop: 'max(env(safe-area-inset-top, 0px), 20px)' }}>
+        style={{ minHeight: 'var(--tg-viewport-height, 100dvh)', paddingTop: 60 }}>
         <h1 className="text-xl font-black mb-2">Способ оплаты</h1>
         <p className="text-sm text-gray-700 mb-6">К оплате: <b>{totalRub}₽</b></p>
 
@@ -111,7 +111,7 @@ export function SubscriptionGate() {
 
   return (
     <div className="flex flex-col items-center justify-center p-6 text-center bg-black"
-        style={{ minHeight: 'var(--tg-viewport-height, 100dvh)', paddingTop: 'max(env(safe-area-inset-top, 0px), 20px)' }}>
+        style={{ minHeight: 'var(--tg-viewport-height, 100dvh)', paddingTop: 60 }}>
       <img
         src={SBP_STUB_IMAGE}
         alt="Оплата СБП"
