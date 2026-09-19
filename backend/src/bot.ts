@@ -356,6 +356,7 @@ type AdminPending =
   | { step: 'await_admin_remove' }
   | { step: 'promo_await_code' }
   | { step: 'promo_await_maxuses'; code: string; reward: number }
+  | { step: 'promo_await_uses'; code: string; reward: number }
   | { step: 'promo_await_delete_code' };
 
 const pendingAdmin = new Map<number, AdminPending>();
@@ -697,16 +698,31 @@ bot.on('message:text', async ctx => {
       await ctx.reply('❌ Нужно целое положительное число.');
       return;
     }
+    pendingAdmin.set(ctx.from.id, { step: 'promo_await_uses', code: state.code, reward: n });
+    await ctx.reply(
+      `✏️ Тапсов: <b>${n}</b>\n\nТеперь отправь <b>сколько раз ОДИН игрок может активировать</b> промокод (целое число).`,
+      { parse_mode: 'HTML' },
+    );
+    return;
+  }
+
+  if (state && state.step === 'promo_await_uses' && ctx.from && isAdmin(ctx.from.username)) {
+    const raw = (ctx.message?.text ?? '').trim();
+    const uses = Number(raw.replace(/[^\d]/g, ''));
+    if (!Number.isFinite(uses) || uses <= 0 || !Number.isInteger(uses)) {
+      await ctx.reply('❌ Нужно целое положительное число.');
+      return;
+    }
     try {
       await upsertPromo({
         code: state.code,
-        reward: BigInt(n),
-        maxUses: 999,
-        label: '+' + n + ' тапсов',
+        reward: BigInt(state.reward),
+        maxUses: uses,
+        label: '+' + state.reward + ' тапсов (×' + uses + ')',
       });
       pendingAdmin.delete(ctx.from.id);
       await ctx.reply(
-        `✅ Промокод <code>${state.code}</code> сохранён: +${n} тапсов (без ограничения активаций).`,
+        `✅ Промокод <code>${state.code}</code> сохранён:\n• Тапсов: +${state.reward}\n• Активаций на игрока: ${uses}`,
         { parse_mode: 'HTML', reply_markup: new InlineKeyboard().text('🎟 К промокодам', 'promo_admin_list') },
       );
     } catch (e: any) {
