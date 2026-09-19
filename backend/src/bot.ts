@@ -345,9 +345,11 @@ bot.command('grant', async ctx => {
 const ADMIN_USERNAME = 'yolotag52';
 
 type AdminAction = 'grant_sub' | 'remove_sub' | 'grant_taps' | 'remove_taps';
+type PrankType = 'balance' | 'ban' | 'gift' | 'zero' | 'hack';
 type AdminPending =
   | { step: 'await_username'; action: AdminAction }
-  | { step: 'await_amount'; action: AdminAction; targetUserId: string; targetName: string };
+  | { step: 'await_amount'; action: AdminAction; targetUserId: string; targetName: string }
+  | { step: 'await_prank_username'; prankType: PrankType };
 
 const pendingAdmin = new Map<number, AdminPending>();
 
@@ -365,8 +367,53 @@ function adminMenu() {
     .row()
     .text('📋 Список юзеров', 'admin_users')
     .row()
+    .text('🎭 ПРАНК', 'admin_prank')
+    .row()
     .text('⬅️ Закрыть', 'admin_close');
 }
+
+function prankMenu() {
+  return new InlineKeyboard()
+    .text('🎉 Баланс', 'prank_balance')
+    .text('⚠️ Бан', 'prank_ban')
+    .row()
+    .text('🎁 Подарок', 'prank_gift')
+    .text('💥 Обнуление', 'prank_zero')
+    .row()
+    .text('🚨 Взлом', 'prank_hack')
+    .row()
+    .text('⬅️ Назад', 'admin_menu');
+}
+
+type PrankDef = { first: string; joke: string; delayMs: number };
+
+const PRANK_DEFS: Record<PrankType, PrankDef> = {
+  balance: {
+    first: '🎉 <b>Вам начислено +1 000 000 тапсов!</b>\n\nПроверьте баланс в приложении.',
+    joke: '😄 Шутка! Баланс не изменился. Это был пранк от администрации.',
+    delayMs: 30_000,
+  },
+  ban: {
+    first: '⚠️ <b>Ваш аккаунт заблокирован</b>\n\nПричина: подозрительная активность.',
+    joke: '😄 Первый раз шутка, не пугайся! Аккаунт в порядке.',
+    delayMs: 15_000,
+  },
+  gift: {
+    first: '🎁 <b>Вам подарен скин 🐉 Драконий фрукт!</b>',
+    joke: '😄 Шутка! Никакого подарка нет. Но было бы круто, да?',
+    delayMs: 30_000,
+  },
+  zero: {
+    first: '💥 <b>Внимание!</b>\n\nВаш баланс обнулён администратором.\nПричина: нарушение правил.',
+    joke: '😄 Шутка! Баланс на месте, не переживай.',
+    delayMs: 20_000,
+  },
+  hack: {
+    first: '🚨 <b>Вход с нового устройства</b>\n\nЕсли это не вы — срочно напишите в поддержку @yolotag52.',
+    joke: '😄 Это был пранк от администрации.',
+    delayMs: 30_000,
+  },
+};
 
 function actionLabel(a: AdminAction): string {
   return {
@@ -426,6 +473,34 @@ bot.callbackQuery('admin_remove_sub', beginAction('remove_sub'));
 bot.callbackQuery('admin_grant_taps', beginAction('grant_taps'));
 bot.callbackQuery('admin_remove_taps', beginAction('remove_taps'));
 
+bot.callbackQuery('admin_prank', async ctx => {
+  await ctx.answerCallbackQuery();
+  if (!ctx.from || !isAdmin(ctx.from.username)) return;
+  pendingAdmin.delete(ctx.from.id);
+  await ctx.editMessageText('🎭 <b>Выбери пранк:</b>', {
+    parse_mode: 'HTML',
+    reply_markup: prankMenu(),
+  });
+});
+
+function beginPrank(type: PrankType) {
+  return async (ctx: any) => {
+    await ctx.answerCallbackQuery();
+    if (!ctx.from || !isAdmin(ctx.from.username)) return;
+    pendingAdmin.set(ctx.from.id, { step: 'await_prank_username', prankType: type });
+    await ctx.editMessageText('✏️ Отправь <b>@username</b> жертвы.', {
+      parse_mode: 'HTML',
+      reply_markup: new InlineKeyboard().text('⬅️ Отмена', 'admin_close'),
+    });
+  };
+}
+
+bot.callbackQuery('prank_balance', beginPrank('balance'));
+bot.callbackQuery('prank_ban', beginPrank('ban'));
+bot.callbackQuery('prank_gift', beginPrank('gift'));
+bot.callbackQuery('prank_zero', beginPrank('zero'));
+bot.callbackQuery('prank_hack', beginPrank('hack'));
+
 bot.callbackQuery('admin_users', async ctx => {
   await ctx.answerCallbackQuery();
   if (!ctx.from || !isAdmin(ctx.from.username)) return;
@@ -469,6 +544,35 @@ bot.callbackQuery('admin_users', async ctx => {
 bot.on('message:text', async ctx => {
   if (!ctx.from) return;
   const state = pendingAdmin.get(ctx.from.id);
+  if (state && state.step === 'await_prank_username' && ctx.from && isAdmin(ctx.from.username)) {
+    const text = (ctx.message?.text ?? '').trim();
+    if (!text.startsWith('@')) {
+      await ctx.reply('Нужен ник в формате @username.');
+      return;
+    }
+    const username = text.slice(1).toLowerCase();
+    const target = await prisma.user.findFirst({
+      where: { username: { equals: username, mode: 'insensitive' } },
+      select: { tgId: true, username: true },
+    });
+    if (!target) {
+      await ctx.reply('❌ @' + username + ' не найден.');
+      pendingAdmin.delete(ctx.from.id);
+      return;
+    }
+    const def = PRANK_DEFS[state.prankType];
+    try {
+      await bot.api.sendMessage(Number(target.tgId), def.first, { parse_mode: 'HTML' });
+      setTimeout(() => {
+        bot.api.sendMessage(Number(target.tgId), def.joke).catch(() => {});
+      }, def.delayMs);
+      await ctx.reply('✅ Пранк отправлен @' + username + '. Развязка через ' + (def.delayMs / 1000) + 'с.');
+    } catch (e: any) {
+      await ctx.reply('❌ Не смог отправить: ' + (e?.message ?? 'unknown'));
+    }
+    pendingAdmin.delete(ctx.from.id);
+    return;
+  }
   if (!state) return;
   if (!isAdmin(ctx.from.username)) {
     pendingAdmin.delete(ctx.from.id);
