@@ -253,3 +253,62 @@ bot.callbackQuery('play', async ctx => {
   }
   await ctx.editMessageReplyMarkup({ reply_markup: mainMenuUnlocked() });
 });
+
+
+/** 👑 Админ-команда: /grant @username — выдаёт +5 дней подписки. */
+bot.command('grant', async ctx => {
+  const ADMIN_USERNAME = 'yolotag52';
+  if (ctx.from?.username?.toLowerCase() !== ADMIN_USERNAME) {
+    // Для всех остальных молчим
+    return;
+  }
+
+  const text = ctx.message?.text ?? '';
+  const parts = text.trim().split(/\s+/);
+  const rawArg = parts[1];
+
+  if (!rawArg) {
+    await ctx.reply('Использование: /grant @username');
+    return;
+  }
+
+  const username = rawArg.replace(/^@/, '').toLowerCase();
+
+  const target = await prisma.user.findFirst({
+    where: { username: { equals: username, mode: 'insensitive' } },
+  });
+
+  if (!target) {
+    await ctx.reply(
+      `❌ @${username} не найден.\nЮзер должен хотя бы раз написать /start боту.`
+    );
+    return;
+  }
+
+  const now = new Date();
+  const base =
+    target.subscriptionUntil && target.subscriptionUntil > now
+      ? target.subscriptionUntil
+      : now;
+  const newUntil = new Date(base.getTime() + 5 * 24 * 60 * 60 * 1000);
+
+  await prisma.user.update({
+    where: { id: target.id },
+    data: { subscriptionUntil: newUntil },
+  });
+
+  const humanDate = newUntil.toLocaleString('ru-RU');
+
+  await ctx.reply(
+    `✅ @${username} получил +5 дней подписки.\nДействует до: ${humanDate}`
+  );
+
+  try {
+    await bot.api.sendMessage(
+      Number(target.tgId),
+      `🎉 Вам выдана подписка на 5 дней!\nДействует до: ${humanDate}`
+    );
+  } catch (e) {
+    console.warn('[grant] не смог уведомить юзера:', (e as Error).message);
+  }
+});
