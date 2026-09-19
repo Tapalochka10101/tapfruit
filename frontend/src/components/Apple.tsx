@@ -63,6 +63,11 @@ export const Apple = forwardRef<HTMLDivElement, Props>(function Apple(
         {skin === 'peach' && <PeachSVG />}
         {skin === 'pineapple' && <PineappleSVG />}
         {skin === 'mango' && <MangoSVG />}
+        {skin === 'lemon' && <LemonSVG />}
+        {skin === 'avocado' && <AvocadoSVG />}
+        {skin === 'blueberry' && <BlueberrySVG />}
+        {skin === 'coconut' && <CoconutSVG />}
+        {skin === 'dragonfruit' && <DragonfruitSVG />}
         {!skin && <AppleSVG />}
       </motion.div>
     </div>
@@ -539,3 +544,217 @@ function MangoSVG() {
     </svg>
   );
 }
+
+function LemonSVG() {
+  return (
+    <svg viewBox="0 0 240 240" className="w-full h-full">
+      <defs>
+        <radialGradient id="lemonBody" cx="34%" cy="26%" r="78%">
+          <stop offset="0%" stopColor="#fffde0" />
+          <stop offset="20%" stopColor="#fde047" />
+          <stop offset="55%" stopColor="#eab308" />
+          <stop offset="82%" stopColor="#a16207" />
+          <stop offset="100%" stopColor="#422006" />
+        </radialGradient>
+      </defs>
+      <path d="M118 50 Q116 24 108 12" stroke="#4b2106" strokeWidth="6" fill="none" strokeLinecap="round" />
+      <path d="M110 22 Q134 4 152 20 Q132 38 110 22 Z" fill="#22c55e" stroke="#14532d" strokeWidth="2.2" strokeLinejoin="round" />
+      <ellipse cx="120" cy="140" rx="86" ry="70" fill="url(#lemonBody)" stroke="#713f12" strokeWidth="3" />
+      <ellipse cx="46" cy="140" rx="10" ry="7" fill="#facc15" stroke="#713f12" strokeWidth="2" />
+      <ellipse cx="194" cy="140" rx="10" ry="7" fill="#facc15" stroke="#713f12" strokeWidth="2" />
+      <g fill="#713f12" opacity="0.22">
+        {Array.from({ length: 30 }).map((_, i) => {
+          const a = (i / 30) * Math.PI * 2;
+          const r = 40 + (i % 5) * 9;
+          const x = 120 + Math.cos(a) * r * 1.15;
+          const y = 140 + Math.sin(a) * r * 0.85;
+          return <circle key={i} cx={x} cy={y} r="1.6" />;
+        })}
+      </g>
+      <Shine cx={88} cy={106} rx={18} ry={26} rotate={-20} />
+      <Blush cx={72} cy={164} />
+      <Blush cx={168} cy={164} />
+      <Eyes cx1={96} cx2={144} cy={132} />
+      <Smile x1={102} x2={138} y={160} color="#713f12" />
+    </svg>
+  );
+}
+
+function AvocadoSVG() {
+  return (
+    <svg viewBox="0 0 240 240" className="w-full h-full">
+      <defs>
+        <radialGradient id="avoOuter" cx="34%" cy="26%" r="78%">
+          <stop offset="0%" stopColor="#4d7c0f" />
+          <stop offset="35%" stopColor="#365314" />
+          <stop offset="75%" stopColor="#1a2e05" />
+          <stop offset="100%" stopColor="#0a0a0a" />
+        </radialGradient>
+        <radialGradient id="avoFlesh" cx="42%" cy="30%" r="70%">
+          <stop offset="0%" stopColor="#fefce8" />
+          <stop offset="45%" stopColor="#ecfccb" />
+          <stop offset="80%" stopColor="#bef264" />
+          <stop offset="100%" stopColor="#a3e635" />
+        </radialGradient>
+        <radialGradient id="avoPit" cx="40%" cy="35%" r="65%">
+          <stop offset="0%" stopColor="#fde68a" />
+          <stop offset="55%" stopColor="#b45309" />
+          <stop offset="100%" stopColor="#451a03" />
+        </radialGradient>
+      </defs>
+      <path d="M120 42 Q116 22 108 12" stroke="#4b2106" strokeWidth="6" fill="none" strokeLinecap="round" />
+      <path d="M110 22 Q132 4 150 18 Q132 36 110 22 Z" fill="#22c55e" stroke="#14532d" strokeWidth="2.2" strokeLinejoin="round" />
+      <path
+        d="M120 58 C 82 66 62 108 66 152 C 70 196 94 220 120 220 C 146 220 170 196 174 152 C 178 108 158 66 120 58 Z"
+        fill="url(#avoOuter)" stroke="#0a0a0a" strokeWidth="3"
+      />
+      <path
+        d="M120 74 C 94 82 80 116 84 152 C 88 186 104 206 120 206 C 136 206 152 186 156 152 C 160 116 146 82 120 74 Z"
+        fill="url(#avoFlesh)" stroke="#365314" strokeWidth="2"
+      />
+      <ellipse cx="120" cy="158" rx="34" ry="36" fill="url(#avoPit)" stroke="#451a03" strokeWidth="2.5" />
+      <ellipse cx="110" cy="146" rx="10" ry="13" fill="#ffffff" opacity="0.7" transform="rotate(-20 110 146)" />
+      <ellipse cx="96" cy="106" rx="10" ry="16" fill="#ffffff" opacity="0.5" transform="rotate(-20 96 106)" />
+      <ellipse cx="88" cy="124" rx="8" ry="5" fill="#fb7185" opacity="0.7" />
+      <ellipse cx="152" cy="124" rx="8" ry="5" fill="#fb7185" opacity="0.7" />
+      <ellipse cx="104" cy="112" rx="9" ry="12" fill="#0f172a" />
+      <ellipse cx="136" cy="112" rx="9" ry="12" fill="#0f172a" />
+      <ellipse cx="107" cy="107" rx="3" ry="4" fill="#ffffff" />
+      <ellipse cx="139" cy="107" rx="3" ry="4" fill="#ffffff" />
+      <path d="M108 132 Q120 146 132 132" stroke="#365314" strokeWidth="3" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function BlueberrySVG() {
+  const berries: [number, number, number][] = [
+    [86, 96, 30], [120, 88, 32], [154, 96, 30],
+    [72, 138, 30], [106, 130, 32], [140, 130, 32], [170, 138, 30],
+    [88, 174, 30], [122, 172, 32], [156, 174, 30],
+    [106, 206, 28], [140, 206, 28],
+  ];
+  return (
+    <svg viewBox="0 0 240 240" className="w-full h-full">
+      <defs>
+        <radialGradient id="bbBody" cx="34%" cy="26%" r="78%">
+          <stop offset="0%" stopColor="#dbeafe" />
+          <stop offset="18%" stopColor="#93c5fd" />
+          <stop offset="50%" stopColor="#3b82f6" />
+          <stop offset="80%" stopColor="#1e3a8a" />
+          <stop offset="100%" stopColor="#0c1445" />
+        </radialGradient>
+      </defs>
+      <path d="M120 50 Q118 24 108 12" stroke="#4b2106" strokeWidth="6" fill="none" strokeLinecap="round" />
+      <path d="M108 20 Q132 4 148 20 Q128 38 108 20 Z" fill="#22c55e" stroke="#14532d" strokeWidth="2" strokeLinejoin="round" />
+      {berries.map(([x, y, r], i) => (
+        <g key={i}>
+          <circle cx={x} cy={y} r={r} fill="url(#bbBody)" stroke="#1e3a8a" strokeWidth="2" />
+          <ellipse cx={x - r * 0.4} cy={y - r * 0.35} rx={r * 0.32} ry={r * 0.42} fill="#ffffff" opacity="0.7" />
+          <path
+            d={`M${x - r * 0.35} ${y - r * 0.85} L${x} ${y - r * 0.55} L${x + r * 0.35} ${y - r * 0.85} L${x + r * 0.15} ${y - r * 0.65} L${x + r * 0.4} ${y - r * 0.4} L${x} ${y - r * 0.45} L${x - r * 0.4} ${y - r * 0.4} L${x - r * 0.15} ${y - r * 0.65} Z`}
+            fill="#1e3a8a"
+            opacity="0.55"
+          />
+        </g>
+      ))}
+      <Eyes cx1={100} cx2={140} cy={130} />
+      <ellipse cx="86" cy="146" rx="9" ry="5" fill="#fb7185" opacity="0.75" />
+      <ellipse cx="154" cy="146" rx="9" ry="5" fill="#fb7185" opacity="0.75" />
+      <Smile x1={106} x2={134} y={154} color="#1e3a8a" />
+    </svg>
+  );
+}
+
+function CoconutSVG() {
+  return (
+    <svg viewBox="0 0 240 240" className="w-full h-full">
+      <defs>
+        <radialGradient id="cocoBody" cx="34%" cy="26%" r="78%">
+          <stop offset="0%" stopColor="#a18976" />
+          <stop offset="30%" stopColor="#7c5a3a" />
+          <stop offset="65%" stopColor="#4b2e17" />
+          <stop offset="100%" stopColor="#1c0f06" />
+        </radialGradient>
+        <radialGradient id="cocoFlesh" cx="45%" cy="40%" r="65%">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="70%" stopColor="#f5f5f4" />
+          <stop offset="100%" stopColor="#d6d3d1" />
+        </radialGradient>
+      </defs>
+      <path d="M120 46 Q126 22 142 14" stroke="#4b2106" strokeWidth="7" fill="none" strokeLinecap="round" />
+      <path d="M142 24 Q166 4 186 20 Q166 40 142 24 Z" fill="#22c55e" stroke="#14532d" strokeWidth="2.5" strokeLinejoin="round" />
+
+      <circle cx="120" cy="140" r="92" fill="url(#cocoBody)" stroke="#1c0f06" strokeWidth="3" />
+
+      <g stroke="#1c0f06" strokeWidth="1.4" opacity="0.55" fill="none">
+        {Array.from({ length: 10 }).map((_, i) => {
+          const a = (i / 10) * Math.PI * 2;
+          const x1 = 120 + Math.cos(a) * 20;
+          const y1 = 140 + Math.sin(a) * 20;
+          const x2 = 120 + Math.cos(a) * 92;
+          const y2 = 140 + Math.sin(a) * 92;
+          return <path key={i} d={`M${x1} ${y1} Q${(x1 + x2) / 2 + 8} ${(y1 + y2) / 2 - 6} ${x2} ${y2}`} />;
+        })}
+      </g>
+
+      <circle cx="92" cy="120" r="12" fill="#1c0f06" opacity="0.85" />
+      <circle cx="148" cy="120" r="12" fill="#1c0f06" opacity="0.85" />
+      <circle cx="120" cy="162" r="12" fill="#1c0f06" opacity="0.85" />
+
+      <circle cx="94" cy="100" r="9" fill="url(#cocoFlesh)" stroke="#1c0f06" strokeWidth="1.5" opacity="0.9" />
+      <circle cx="146" cy="100" r="9" fill="url(#cocoFlesh)" stroke="#1c0f06" strokeWidth="1.5" opacity="0.9" />
+      <circle cx="120" cy="148" r="9" fill="url(#cocoFlesh)" stroke="#1c0f06" strokeWidth="1.5" opacity="0.9" />
+
+      <ellipse cx="94" cy="100" rx="3.2" ry="4.4" fill="#0f172a" />
+      <ellipse cx="146" cy="100" rx="3.2" ry="4.4" fill="#0f172a" />
+      <ellipse cx="96" cy="98" rx="1.3" ry="1.7" fill="#ffffff" />
+      <ellipse cx="148" cy="98" rx="1.3" ry="1.7" fill="#ffffff" />
+
+      <ellipse cx="82" cy="118" rx="8" ry="5" fill="#fb7185" opacity="0.6" />
+      <ellipse cx="158" cy="118" rx="8" ry="5" fill="#fb7185" opacity="0.6" />
+
+      <path d="M112 162 Q120 172 128 162" stroke="#1c0f06" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function DragonfruitSVG() {
+  return (
+    <svg viewBox="0 0 240 240" className="w-full h-full">
+      <defs>
+        <radialGradient id="dfBody" cx="34%" cy="26%" r="78%">
+          <stop offset="0%" stopColor="#ffd6f0" />
+          <stop offset="18%" stopColor="#f472b6" />
+          <stop offset="55%" stopColor="#db2777" />
+          <stop offset="82%" stopColor="#831843" />
+          <stop offset="100%" stopColor="#3b0a2a" />
+        </radialGradient>
+      </defs>
+      <ellipse cx="120" cy="130" rx="82" ry="90" fill="url(#dfBody)" stroke="#831843" strokeWidth="3" />
+
+      {[
+        { d: 'M54 78 L24 46 L58 62 Z' },
+        { d: 'M186 78 L216 46 L182 62 Z' },
+        { d: 'M44 130 L6 122 L52 146 Z' },
+        { d: 'M196 130 L234 122 L188 146 Z' },
+        { d: 'M62 190 L28 208 L66 200 Z' },
+        { d: 'M178 190 L212 208 L174 200 Z' },
+        { d: 'M120 42 L120 10 L138 44 Z' },
+        { d: 'M104 40 L88 12 L122 36 Z' },
+      ].map((p, i) => (
+        <path key={i} d={p.d} fill="#65a30d" stroke="#14532d" strokeWidth="2" strokeLinejoin="round" />
+      ))}
+
+      <ellipse cx="96" cy="118" rx="14" ry="18" fill="#0f172a" />
+      <ellipse cx="144" cy="118" rx="14" ry="18" fill="#0f172a" />
+      <ellipse cx="100" cy="112" rx="5" ry="6.5" fill="#ffffff" />
+      <ellipse cx="148" cy="112" rx="5" ry="6.5" fill="#ffffff" />
+
+      <ellipse cx="78" cy="152" rx="12" ry="7" fill="#fb7185" opacity="0.85" />
+      <ellipse cx="162" cy="152" rx="12" ry="7" fill="#fb7185" opacity="0.85" />
+
+      <path d="M102 156 Q120 176 138 156" stroke="#3b0a2a" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
