@@ -4,6 +4,9 @@ import { prisma } from './lib/prisma.js';
 
 export const bot = new Bot(ENV.BOT_TOKEN || '0:placeholder');
 
+/** Множество user-id, которые сейчас вводят свою сумму. */
+const pendingCustomAmount = new Set<number>();
+
 /** Главное меню. */
 function mainMenu() {
   return new InlineKeyboard()
@@ -151,8 +154,6 @@ bot.callbackQuery('subscription', async ctx => {
   });
 });
 
-/** Множество user-id, которые сейчас вводят свою сумму. */
-const pendingCustomAmount = new Set<number>();
 
 /** Обработка текстовых сообщений — только для тех, кто в pendingCustomAmount. */
 bot.on('message:text', async ctx => {
@@ -182,4 +183,11 @@ export function buildReferralLink(tgId: bigint): string {
   return `https://t.me/${username}?start=${tgId.toString()}`;
 }
 
-export const botWebhook = webhookCallback(bot, 'express');
+bot.catch(err => {
+  console.error('[bot] error:', err.error);
+});
+
+export const botWebhook = webhookCallback(bot, 'express', {
+  timeoutMilliseconds: 10000,
+  onTimeout: 'return',
+});
