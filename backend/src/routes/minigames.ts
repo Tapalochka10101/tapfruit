@@ -6,7 +6,7 @@ export const minigamesRouter = Router();
 
 const CHIPS_PER_TAP = 100n;
 const MIN_BET = 10;
-const MAX_BET = 5000;
+const MAX_BET = 1_000_000;
 
 // 🎲 Шансы
 const WIN_CHANCE = 0.40;   // 40% выигрыш
@@ -258,7 +258,7 @@ minigamesRouter.post('/minigames/word/start', async (req, res) => {
     userId: req.userId!,
     word,
     bet,
-    attemptsLeft: wordLength + 1,
+    attemptsLeft: wordLength + 3,
     guessed: new Set(),
     revealed: new Array(wordLength).fill(false),
     startedAt: Date.now(),
@@ -274,7 +274,7 @@ minigamesRouter.post('/minigames/word/start', async (req, res) => {
     sessionId,
     wordLength,
     masked: new Array(wordLength).fill('_'),
-    attemptsLeft: wordLength + 1,
+    attemptsLeft: wordLength + 3,
     chips: updated.chips.toString(),
   });
 });
@@ -484,7 +484,7 @@ minigamesRouter.post('/minigames/tictactoe/move', async (req, res) => {
   let chips: string | null = null;
   if (status === 'won') {
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
-    const reward = BigInt(s.bet * 3);
+    const reward = BigInt(s.bet * 2);
     const upd = await prisma.user.update({
       where: { id: user.id },
       data: { chips: { increment: reward } },
