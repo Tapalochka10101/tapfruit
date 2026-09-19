@@ -176,3 +176,301 @@ minigamesRouter.get('/minigames/me', async (req, res) => {
     rate: CHIPS_PER_TAP.toString(),
   });
 });
+
+// ===================== УГАДАЙ СЛОВО =====================
+
+const WORDS_4 = [
+  'окно', 'стол', 'вода', 'гора', 'река', 'луна', 'небо', 'свет', 'тень', 'снег',
+  'поле', 'море', 'село', 'порт', 'метр', 'флаг', 'краб', 'слон', 'ключ', 'игра',
+  'шар', 'друг', 'брат', 'стул', 'шкаф', 'нота', 'пила', 'рука', 'нога', 'глаз',
+  'рот', 'нос', 'зуб', 'тело', 'душа', 'лист', 'куст', 'мост', 'хлеб', 'торт',
+  'суп', 'сок', 'чай', 'кофе', 'мёд', 'соль', 'сад', 'лес', 'парк', 'двор',
+  'пруд', 'гром', 'роса', 'иней', 'зной', 'лёд', 'танк', 'скот', 'стон', 'степ',
+  'дуга', 'лук', 'кот', 'моль', 'медь', 'цинк', 'нить', 'кожа', 'мех', 'воск',
+  'угол', 'круг', 'овал', 'куб', 'диск', 'луч', 'ток', 'газ', 'дым', 'пар',
+  'жук', 'паук', 'рак', 'час', 'год', 'путь', 'шаг', 'бег', 'ход', 'крик',
+  'шум', 'гул', 'стук', 'звон', 'зов', 'брак', 'кран', 'банк', 'свод', 'мир',
+];
+
+type WordSession = {
+  userId: string;
+  word: string;
+  bet: number;
+  attemptsLeft: number;
+  guessed: Set<string>;
+  revealed: boolean[];
+  startedAt: number;
+};
+
+const wordSessions = new Map<string, WordSession>();
+const tttSessions = new Map<string, TttSession>();
+
+function newSessionId(): string {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+const cleanupTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [id, s] of wordSessions) if (now - s.startedAt > 30 * 60_000) wordSessions.delete(id);
+  for (const [id, s] of tttSessions) if (now - s.startedAt > 30 * 60_000) tttSessions.delete(id);
+}, 60_000);
+if (typeof (cleanupTimer as any).unref === 'function') (cleanupTimer as any).unref();
+
+const WordStartSchema = z.object({
+  bet: z.number().int().min(MIN_BET).max(MAX_BET),
+});
+
+minigamesRouter.post('/minigames/word/start', async (req, res) => {
+  const parsed = WordStartSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'bad_payload' });
+  const { bet } = parsed.data;
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
+  if (user.chips < BigInt(bet)) return res.status(400).json({ error: 'insufficient_chips' });
+
+  const word = WORDS_4[Math.floor(Math.random() * WORDS_4.length)];
+  const sessionId = newSessionId();
+
+  wordSessions.set(sessionId, {
+    userId: req.userId!,
+    word,
+    bet,
+    attemptsLeft: 4,
+    guessed: new Set(),
+    revealed: [false, false, false, false],
+    startedAt: Date.now(),
+  });
+
+  const updated = await prisma.user.update({
+    where: { id: user.id },
+    data: { chips: { decrement: BigInt(bet) } },
+  });
+
+  res.json({
+    ok: true,
+    sessionId,
+    masked: ['_', '_', '_', '_'],
+    attemptsLeft: 4,
+    chips: updated.chips.toString(),
+  });
+});
+
+const WordGuessSchema = z.object({
+  sessionId: z.string(),
+  letter: z.string().min(1).max(2),
+});
+
+minigamesRouter.post('/minigames/word/guess', async (req, res) => {
+  const parsed = WordGuessSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'bad_payload' });
+  const { sessionId, letter } = parsed.data;
+  const session = wordSessions.get(sessionId);
+  if (!session) return res.status(404).json({ error: 'session_not_found' });
+  if (session.userId !== req.userId!) return res.status(403).json({ error: 'forbidden' });
+
+  const L = letter.toUpperCase();
+  if (session.guessed.has(L)) {
+    return res.json({
+      ok: true,
+      correct: true,
+      already: true,
+      masked: session.word.split('').map((c, i) => (session.revealed[i] ? c.toUpperCase() : '_')),
+      attemptsLeft: session.attemptsLeft,
+    });
+  }
+  session.guessed.add(L);
+
+  const wordUp = session.word.toUpperCase();
+  let correct = false;
+  for (let i = 0; i < 4; i++) {
+    if (wordUp[i] === L && !session.revealed[i]) {
+      session.revealed[i] = true;
+      correct = true;
+    }
+  }
+  if (!correct) session.attemptsLeft -= 1;
+
+  const masked = session.word.split('').map((c, i) => (session.revealed[i] ? c.toUpperCase() : '_'));
+  const won = session.revealed.every(Boolean);
+  const lost = !won && session.attemptsLeft <= 0;
+
+  let chips: string | null = null;
+  if (won) {
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
+    const reward = BigInt(session.bet * 2);
+    const upd = await prisma.user.update({
+      where: { id: user.id },
+      data: { chips: { increment: reward } },
+    });
+    chips = upd.chips.toString();
+    wordSessions.delete(sessionId);
+  } else if (lost) {
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
+    chips = user.chips.toString();
+    wordSessions.delete(sessionId);
+  }
+
+  res.json({
+    ok: true,
+    correct,
+    letter: L,
+    masked,
+    attemptsLeft: session.attemptsLeft,
+    won,
+    lost,
+    word: (won || lost) ? session.word.toUpperCase() : undefined,
+    chips,
+  });
+});
+
+// ===================== КРЕСТИКИ-НОЛИКИ =====================
+
+const LINES = [
+  [0,1,2],[3,4,5],[6,7,8],
+  [0,3,6],[1,4,7],[2,5,8],
+  [0,4,8],[2,4,6],
+];
+
+function tttWinner(b: string[]): 'X' | 'O' | null {
+  for (const [a, c, d] of LINES) {
+    if (b[a] && b[a] === b[c] && b[a] === b[d]) return b[a] as 'X' | 'O';
+  }
+  return null;
+}
+
+function tttFull(b: string[]): boolean {
+  return b.every(c => c !== '');
+}
+
+function tttBest(b: string[], player: 'X' | 'O'): { score: number; move: number } {
+  const w = tttWinner(b);
+  if (w === 'X') return { score: 10, move: -1 };
+  if (w === 'O') return { score: -10, move: -1 };
+  if (tttFull(b)) return { score: 0, move: -1 };
+
+  let best: { score: number; move: number } = { score: player === 'X' ? -Infinity : Infinity, move: -1 };
+  for (let i = 0; i < 9; i++) {
+    if (b[i] !== '') continue;
+    b[i] = player;
+    const r = tttBest(b, player === 'X' ? 'O' : 'X');
+    b[i] = '';
+    if (player === 'X') {
+      if (r.score > best.score) best = { score: r.score, move: i };
+    } else {
+      if (r.score < best.score) best = { score: r.score, move: i };
+    }
+  }
+  return best;
+}
+
+function tttBotMove(board: string[]): number {
+  return tttBest(board.slice(), 'X').move;
+}
+
+const TttStartSchema = z.object({
+  bet: z.number().int().min(MIN_BET).max(MAX_BET),
+});
+
+minigamesRouter.post('/minigames/tictactoe/start', async (req, res) => {
+  const parsed = TttStartSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'bad_payload' });
+  const { bet } = parsed.data;
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
+  if (user.chips < BigInt(bet)) return res.status(400).json({ error: 'insufficient_chips' });
+
+  const board = ['','','','','','','','',''];
+  const playerFirst = Math.random() < 0.5;
+  let firstMover: 'player' | 'bot' = 'player';
+
+  if (!playerFirst) {
+    const move = tttBotMove(board);
+    if (move >= 0) board[move] = 'X';
+    firstMover = 'bot';
+  }
+
+  const sessionId = newSessionId();
+  tttSessions.set(sessionId, {
+    userId: req.userId!,
+    bet,
+    board,
+    turn: 'player',
+    startedAt: Date.now(),
+    finished: false,
+  });
+
+  const updated = await prisma.user.update({
+    where: { id: user.id },
+    data: { chips: { decrement: BigInt(bet) } },
+  });
+
+  res.json({
+    ok: true,
+    sessionId,
+    board,
+    firstMover,
+    chips: updated.chips.toString(),
+  });
+});
+
+const TttMoveSchema = z.object({
+  sessionId: z.string(),
+  cell: z.number().int().min(0).max(8),
+});
+
+minigamesRouter.post('/minigames/tictactoe/move', async (req, res) => {
+  const parsed = TttMoveSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'bad_payload' });
+  const { sessionId, cell } = parsed.data;
+  const s = tttSessions.get(sessionId);
+  if (!s) return res.status(404).json({ error: 'session_not_found' });
+  if (s.userId !== req.userId!) return res.status(403).json({ error: 'forbidden' });
+  if (s.finished) return res.status(400).json({ error: 'session_finished' });
+  if (s.board[cell] !== '') return res.status(400).json({ error: 'cell_taken' });
+
+  s.board[cell] = 'O';
+  let status: 'playing' | 'won' | 'lost' | 'draw' = 'playing';
+
+  if (tttWinner(s.board) === 'O') {
+    status = 'won';
+    s.finished = true;
+  } else if (tttFull(s.board)) {
+    status = 'draw';
+    s.finished = true;
+  } else {
+    const bot = tttBotMove(s.board);
+    if (bot >= 0) s.board[bot] = 'X';
+
+    if (tttWinner(s.board) === 'X') {
+      status = 'lost';
+      s.finished = true;
+    } else if (tttFull(s.board)) {
+      status = 'draw';
+      s.finished = true;
+    }
+  }
+
+  let chips: string | null = null;
+  if (status === 'won') {
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
+    const reward = BigInt(s.bet * 3);
+    const upd = await prisma.user.update({
+      where: { id: user.id },
+      data: { chips: { increment: reward } },
+    });
+    chips = upd.chips.toString();
+    tttSessions.delete(sessionId);
+  } else if (status === 'lost') {
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
+    chips = user.chips.toString();
+    tttSessions.delete(sessionId);
+  } else if (status === 'draw') {
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
+    const upd = await prisma.user.update({
+      where: { id: user.id },
+      data: { chips: { increment: BigInt(s.bet) } },
+    });
+    chips = upd.chips.toString();
+    tttSessions.delete(sessionId);
+  }
+
+  res.json({ ok: true, board: s.board, status, chips });
+});
