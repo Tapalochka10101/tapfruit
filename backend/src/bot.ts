@@ -13,7 +13,7 @@ function mainMenu() {
     .text('💰 БАЛАНС', 'balance')
     .row()
     .text('📅 ПОДПИСКА', 'subscription')
-    .webApp('🍎 ИГРАТЬ', `https://t.me/TapFruit_bot/play`);
+    .webApp('🍎 ИГРАТЬ', `https://frontend-sandy-eight-12.vercel.app`);
 }
 
 /** Меню "Тарифы" (первый экран БАЛАНСА). */
