@@ -33,25 +33,16 @@ export function useTapBatcher() {
       });
       pendingRef.current -= count;
 
-      // Обновляем tapIndex/seed всегда — они монотонные и не «прыгают».
+      // Баланс НЕ синкаем — живёт локально (оптимистично).
+      // С сервера берём только tapIndex/seed, чтобы батчи не рассинхронились.
       const patch: any = {
         tapIndex: Number(r.tapIndex),
       };
       if (r.rotated) patch.seed = Number(r.tapSeed);
 
-      // А balance перезаписываем ТОЛЬКО когда всё осело:
-      // буфер пуст и в полёте не осталось других батчей.
-      // Иначе мы бы затирали локальный оптимистичный баланс более старым серверным.
-      // Если сервер отклонил — НЕ трогаем balance (иначе UI откатится),
-      // просто сбрасываем индекс сессии.
       if (r.rejected) {
         sessionStartIdxRef.current = null;
-        pendingRef.current -= count; // уже вычли выше, но оставим для страховки
-      } else {
-        const idle = bufferRef.current === 0 && pendingRef.current === 0;
-        if (idle) {
-          patch.balance = Number(r.balance);
-        }
+        console.warn('[tap] rejected:', r.reason);
       }
 
       useGame.setState(patch);
