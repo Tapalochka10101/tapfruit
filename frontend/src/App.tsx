@@ -72,7 +72,11 @@ export default function App() {
     const bananaActive = boostUntil != null && boostUntil > Date.now();
     const boostMult = bananaActive ? 5 : 1;
     const base = isCrit ? GAME_CONFIG.critValue : 1;
-    const value = Math.round(base * upgradeMult * boostMult);
+    // 🥝 KIWI: +25% ко всем тапам
+    const kiwiMult = skin === 'kiwi' ? 1.25 : 1;
+    // 🥭 MANGO: ×3 ко всем тапам (за 5 лямов — пассивный)
+    const mangoMult = skin === 'mango' ? 3 : 1;
+    const value = Math.round(base * upgradeMult * boostMult * kiwiMult * mangoMult);
 
     addOptimistic(value);
     registerTap();
@@ -164,20 +168,20 @@ export default function App() {
       <div className="pb-6 px-3 flex justify-between items-end gap-2 relative z-50">
         <button
           onClick={() => setGamesOpen(true)}
-          className="h-14 px-3 rounded-full bg-gradient-to-br from-violet-500 to-purple-700 text-white text-sm font-black shadow-[0_8px_24px_rgba(120,40,200,0.5)] active:scale-95 transition flex items-center gap-1"
+          className="h-16 px-5 rounded-full bg-gradient-to-br from-violet-500 to-purple-700 text-white text-base font-black shadow-[0_8px_24px_rgba(120,40,200,0.5)] active:scale-95 transition flex items-center gap-1"
         >
           🎲 ИГРЫ
         </button>
         <button
           onClick={() => setGensOpen(true)}
-          className="h-14 px-3 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 text-white text-sm font-black shadow-[0_8px_24px_rgba(20,180,150,0.5)] active:scale-95 transition flex items-center gap-1"
+          className="h-16 px-5 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 text-white text-base font-black shadow-[0_8px_24px_rgba(20,180,150,0.5)] active:scale-95 transition flex items-center gap-1"
         >
           🏭 ДОХОД
         </button>
 
         <button
           onClick={() => setShopOpen(true)}
-          className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 text-white text-2xl shadow-[0_8px_24px_rgba(255,120,0,0.5)] active:scale-95 transition flex items-center justify-center"
+          className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 text-white text-3xl shadow-[0_8px_24px_rgba(255,120,0,0.5)] active:scale-95 transition flex items-center justify-center"
           aria-label="shop"
         >⭐</button>
       </div>

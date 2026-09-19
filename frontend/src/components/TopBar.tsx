@@ -29,7 +29,7 @@ export function TopBar({
       {/* ПОДПИСКА слева */}
       <button
         onClick={onSubscription}
-        className={`px-3 py-2 rounded-2xl text-xs font-bold active:scale-95 transition ${
+        className={`px-4 py-2.5 rounded-2xl text-sm font-bold active:scale-95 transition ${
           subscriptionActive
             ? 'bg-green-500/20 text-green-600'
             : 'bg-red-500/20 text-red-600'
@@ -47,7 +47,7 @@ export function TopBar({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 10, opacity: 0 }}
             transition={{ duration: 0.16 }}
-            className="text-3xl font-black tabular-nums"
+            className="text-4xl font-black tabular-nums"
           >
             {fmt(balance)}
           </motion.div>
@@ -65,13 +65,13 @@ export function TopBar({
             initial={{ scale: 0 }}
             animate={{ scale: [1, 1.1, 1] }}
             transition={{ repeat: Infinity, duration: 1.4 }}
-            className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-xl shadow-lg active:scale-95 transition"
+            className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-2xl shadow-lg active:scale-95 transition"
             aria-label="daily"
           >📅</motion.button>
         )}
         <button
           onClick={onSettings}
-          className="w-11 h-11 rounded-2xl bg-[var(--tg-card)] flex items-center justify-center text-xl active:scale-95 transition shadow-sm"
+          className="w-12 h-12 rounded-2xl bg-[var(--tg-card)] flex items-center justify-center text-2xl active:scale-95 transition shadow-sm"
           aria-label="settings"
         >⚙️</button>
       </div>
