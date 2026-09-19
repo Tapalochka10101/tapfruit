@@ -57,6 +57,15 @@ app.use('/api', api);
       console.log('[bot] webhook set:', webhookUrl);
       await bot.init();
       console.log('[bot] ready:', bot.botInfo.username);
+
+      // Регистрируем команды и ставим кнопку Menu снизу
+      await bot.api.setMyCommands([
+        { command: 'start', description: 'Открыть меню' },
+      ]);
+      await bot.api.setChatMenuButton({
+        menu_button: { type: 'commands' },
+      });
+      console.log('[bot] commands + menu button set');
     } catch (e) {
       console.warn('[bot] init failed:', (e as Error).message);
       // НЕ падаем — сервер всё равно должен слушать порт
