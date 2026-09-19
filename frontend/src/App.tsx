@@ -119,15 +119,28 @@ export default function App() {
   return (
     <div
       className="flex flex-col relative overflow-hidden"
-      style={{
-        height: '100dvh',
-        paddingTop: 16,
-        boxSizing: 'border-box',
-      }}
+      style={{ height: '100dvh' }}
     >
       <div className="app-bg"><div className="blob3" /></div>
 
-      <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+      {/* Тап-таргет поверх всего полотна */}
+      <div
+        onPointerDown={onTap}
+        className="absolute inset-0 z-20 tap-target"
+        style={{ background: 'transparent' }}
+      />
+
+      {/* Частицы и всплывашки */}
+      <div className="fixed inset-0 z-30 pointer-events-none overflow-hidden">
+        <Particles items={particles} />
+        <FloatingTexts items={floaters} />
+      </div>
+
+      {/* Верхний спейсер */}
+      <div className="flex-1 min-h-0" />
+
+      {/* Яблоко — по центру */}
+      <div className="relative z-10 flex items-center justify-center pointer-events-none py-4">
         <Apple
           skin={activeSkin}
           bananaBoostActive={boostUntil != null && boostUntil > Date.now()}
@@ -135,18 +148,8 @@ export default function App() {
         />
       </div>
 
-      <div
-        onPointerDown={onTap}
-        className="absolute inset-0 z-20 tap-target"
-        style={{ background: 'transparent' }}
-      />
-
-      <div className="fixed inset-0 z-30 pointer-events-none overflow-hidden">
-        <Particles items={particles} />
-        <FloatingTexts items={floaters} />
-      </div>
-
-      <div className="relative z-50">
+      {/* Топбар — ниже яблока */}
+      <div className="relative z-50 mt-2">
         <TopBar
           onSettings={() => setSettingsOpen(true)}
           onDaily={() => setDailyOpen(true)}
@@ -155,7 +158,8 @@ export default function App() {
         />
       </div>
 
-      <div className="flex-1" />
+      {/* Нижний спейсер */}
+      <div className="flex-1 min-h-0" />
 
       <div className="pb-6 px-3 flex justify-between items-end gap-2 relative z-50">
         <button
