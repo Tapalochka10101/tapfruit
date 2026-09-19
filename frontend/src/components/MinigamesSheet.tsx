@@ -432,7 +432,7 @@ export function MinigamesSheet({ open, onClose }: { open: boolean; onClose: () =
                         : tttState.status === 'lost' ? 'bg-red-500 text-white'
                         : 'bg-yellow-500 text-white'
                       }`}>
-                        {tttState.status === 'won' ? '🎉 ПОБЕДА! ×3'
+                        {tttState.status === 'won' ? '🎉 ПОБЕДА! ×2'
                           : tttState.status === 'lost' ? '😢 Проиграл'
                           : '🤝 Ничья — ставка возвращена'}
                       </div>
