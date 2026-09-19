@@ -287,21 +287,42 @@ export function MinigamesSheet({ open, onClose }: { open: boolean; onClose: () =
 
             <div>
               <div className="text-xs text-[var(--tg-hint)] mb-2 text-center">Ставка</div>
+              <div className="flex items-center gap-2 mb-2">
+                <button
+                  onClick={() => setBet(b => Math.max(10, b - 10))}
+                  className="w-10 h-10 rounded-xl bg-[var(--tg-card)] font-black text-lg active:scale-95"
+                >−</button>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={bet}
+                  onChange={e => {
+                    const v = Number(e.target.value.replace(/\D/g, '')) || 0;
+                    setBet(Math.min(v, chips));
+                  }}
+                  className="flex-1 py-3 rounded-xl bg-[var(--tg-card)] text-center font-black text-lg tabular-nums"
+                />
+                <button
+                  onClick={() => setBet(b => Math.min(chips, b + 10))}
+                  className="w-10 h-10 rounded-xl bg-[var(--tg-card)] font-black text-lg active:scale-95"
+                >+</button>
+              </div>
               <div className="grid grid-cols-5 gap-1.5">
-                {BETS.map(b => (
+                {[10, 50, 100, 500, 5000].map(b => (
                   <button
                     key={b}
-                    onClick={() => setBet(b)}
-                    disabled={chips < b}
-                    className={`py-3 rounded-xl font-bold text-xs transition ${
+                    onClick={() => setBet(Math.min(b, chips))}
+                    disabled={chips < 10}
+                    className={`py-2 rounded-xl font-bold text-xs transition ${
                       bet === b
                         ? 'bg-brand text-white'
-                        : chips >= b
-                          ? 'bg-[var(--tg-card)]'
-                          : 'bg-gray-200 text-gray-400'
+                        : 'bg-[var(--tg-card)]'
                     }`}
                   >{b >= 1000 ? (b/1000) + 'к' : b}</button>
                 ))}
+              </div>
+              <div className="text-[10px] text-[var(--tg-hint)] text-center mt-1">
+                макс: {fmt(chips)}
               </div>
             </div>
 
