@@ -20,21 +20,21 @@ const UPGRADES = [
 ];
 
 const SKINS: { id: SkinId; emoji: string; title: string; desc: string; price: number }[] = [
-  { id: 'orange',      emoji: '🍊', title: 'Апельсин',       desc: '+100 тапов раз в день (МСК)',  price: 500 },
-  { id: 'pear',        emoji: '🍐', title: 'Груша',          desc: '+7% крит (+7 вместо +1)',       price: 2_000 },
-  { id: 'banana',      emoji: '🍌', title: 'Банан',          desc: '×5 на 15 сек / 30 мин',         price: 5_000 },
-  { id: 'grape',       emoji: '🍇', title: 'Виноград',       desc: '+5% ко всем тапам',             price: 15_000 },
-  { id: 'strawberry',  emoji: '🍓', title: 'Клубника',       desc: '+15% крит',                      price: 40_000 },
-  { id: 'cherry',      emoji: '🍒', title: 'Вишня',          desc: '×2 к оффлайн-доходу',            price: 100_000 },
-  { id: 'kiwi',        emoji: '🥝', title: 'Киви',           desc: '×10 на 10 сек / раз в час',     price: 250_000 },
-  { id: 'peach',       emoji: '🍑', title: 'Персик',         desc: '+30% ко всем тапам',             price: 750_000 },
-  { id: 'pineapple',   emoji: '🍍', title: 'Ананас',         desc: '+50% ко всем источникам',        price: 2_000_000 },
-  { id: 'mango',       emoji: '🥭', title: 'Манго',          desc: '+100% и ×10 буст 20 сек',        price: 10_000_000 },
-  { id: 'lemon',       emoji: '🍋', title: 'Лимон',          desc: '+80% ко всем тапам',             price: 25_000_000 },
-  { id: 'avocado',     emoji: '🥑', title: 'Авокадо',        desc: '+100% к пассиву',                price: 50_000_000 },
-  { id: 'blueberry',   emoji: '🫐', title: 'Голубика',       desc: '+20% крит',                      price: 100_000_000 },
-  { id: 'coconut',     emoji: '🥥', title: 'Кокос',          desc: '×2 к дневной награде',           price: 250_000_000 },
-  { id: 'dragonfruit', emoji: '🐉', title: 'Драконий фрукт', desc: '+200% ко всему',                 price: 1_000_000_000 },
+  { id: 'orange',      emoji: '🍊', title: 'Апельсин',       desc: '+3% к тапу, +100/день',                   price: 500 },
+  { id: 'pear',        emoji: '🍐', title: 'Груша',          desc: 'Крит 7% ×3',                              price: 2_000 },
+  { id: 'banana',      emoji: '🍌', title: 'Банан',          desc: 'Активный ×2 буст (30с, кд 5м)',           price: 5_000 },
+  { id: 'grape',       emoji: '🍇', title: 'Виноград',       desc: '+7% тап, +5% пассив',                     price: 15_000 },
+  { id: 'strawberry',  emoji: '🍓', title: 'Клубника',       desc: 'Крит 12% ×5',                             price: 40_000 },
+  { id: 'cherry',      emoji: '🍒', title: 'Вишня',          desc: '+15% тап, офлайн ×2',                     price: 100_000 },
+  { id: 'kiwi',        emoji: '🥝', title: 'Киви',           desc: '+25% к тапу',                             price: 250_000 },
+  { id: 'peach',       emoji: '🍑', title: 'Персик',         desc: '+40% пассив',                             price: 750_000 },
+  { id: 'pineapple',   emoji: '🍍', title: 'Ананас',         desc: 'Крит 18% ×7',                             price: 2_000_000 },
+  { id: 'mango',       emoji: '🥭', title: 'Манго',          desc: '+100% пассив, +10% тап',                  price: 10_000_000 },
+  { id: 'lemon',       emoji: '🍋', title: 'Лимон',          desc: '+100% пассив, +15% тап, −20% на генераторы', price: 25_000_000 },
+  { id: 'avocado',     emoji: '🥑', title: 'Авокадо',        desc: '+150% пассив, +20% тап, +50% при сборе',  price: 50_000_000 },
+  { id: 'blueberry',   emoji: '🫐', title: 'Голубика',       desc: 'Крит 25% ×10, крит-цепочка 30%',         price: 100_000_000 },
+  { id: 'coconut',     emoji: '🥥', title: 'Кокос',          desc: '+300% пассив, офлайн-кап 24ч',            price: 250_000_000 },
+  { id: 'dragonfruit', emoji: '🐉', title: 'Драконий фрукт', desc: '+400% пассив, крит 35% ×25',              price: 1_000_000_000 },
 ];
 
 export function ShopSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
