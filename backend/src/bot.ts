@@ -587,7 +587,7 @@ async function renderPromoList(ctx: any) {
     return;
   }
   const lines = list.map(p =>
-    `• <code>${p.code}</code> — +${p.reward.toString()} тапсов, ${p.usedCount}/${p.maxUses}`
+    `• <code>${p.code}</code> — +${p.reward.toString()} тапсов${p.maxUses > 1 ? ' (×' + p.maxUses + ' на игрока)' : ' (×1 на игрока)'}`
   );
   await ctx.editMessageText(
     '🎟 <b>Промокоды</b>\n\n' + lines.join('\n'),
