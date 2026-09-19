@@ -13,7 +13,9 @@ function mainMenu() {
     .text('💰 БАЛАНС', 'balance')
     .row()
     .text('📅 ПОДПИСКА', 'subscription')
-    .text('🍎 ИГРАТЬ', 'play');
+    .text('🍎 ИГРАТЬ', 'play')
+    .row()
+    .text('ℹ️ ИНФОРМАЦИЯ', 'info');
 }
 
 /** Меню с разблокированной кнопкой ИГРАТЬ (webApp). */
@@ -22,7 +24,9 @@ function mainMenuUnlocked() {
     .text('💰 БАЛАНС', 'balance')
     .row()
     .text('📅 ПОДПИСКА', 'subscription')
-    .webApp('🍎 ИГРАТЬ', 'https://frontend-sandy-eight-12.vercel.app');
+    .webApp('🍎 ИГРАТЬ', 'https://frontend-sandy-eight-12.vercel.app')
+    .row()
+    .text('ℹ️ ИНФОРМАЦИЯ', 'info');
 }
 
 /** Меню "Тарифы" (первый экран БАЛАНСА). */
@@ -90,6 +94,26 @@ bot.command('start', async ctx => {
   } catch (e) {
     console.error('[start] error:', e);
   }
+});
+
+const INFO_TEXT =
+  'ℹ️ <b>Информация</b>\n\n' +
+  '📄 <b>Политика конфиденциальности:</b>\n' +
+  'https://telegra.ph/Politika-konfidencialnosti-09-19-56\n\n' +
+  '📜 <b>Пользовательское соглашение:</b>\n' +
+  'https://telegra.ph/Polzovatelskoe-soglashenie-09-19-67\n\n' +
+  '💬 <b>Контакты поддержки:</b>\n' +
+  '@yolotag52\n\n' +
+  '💵 <b>Актуальный тариф:</b>\n' +
+  '100₽ = 3 дня подписки на игру';
+
+bot.callbackQuery('info', async ctx => {
+  await ctx.answerCallbackQuery();
+  await ctx.editMessageText(INFO_TEXT, {
+    parse_mode: 'HTML',
+    reply_markup: new InlineKeyboard().text('⬅️ НАЗАД', 'menu'),
+    link_preview_options: { is_disabled: true },
+  });
 });
 
 /** Кнопка БАЛАНС → тарифы. */

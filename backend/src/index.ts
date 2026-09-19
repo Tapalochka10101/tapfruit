@@ -28,7 +28,13 @@ app.use(cors());
 app.use(express.json({ limit: '256kb' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
-app.get('/admin-panel', (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
+app.get('/admin-panel', (req, res) => {
+  const pw = process.env.ADMIN_PASSWORD;
+  // Отдаём HTML только если передан верный ключ в query (?key=...).
+  // Иначе 404 — не палим, что страница существует.
+  if (!pw || req.query.key !== pw) return res.status(404).end();
+  res.sendFile(path.join(PUBLIC_DIR, 'admin.html'));
+});
 app.post('/telegram/webhook', botWebhook);
 app.post('/api/wallet/webhook', async (_req, res) => { res.json({ ok: true }); });
 
@@ -59,9 +65,10 @@ app.use('/api', api);
       console.log('[bot] ready:', bot.botInfo.username);
 
       // Регистрируем команды и ставим кнопку Menu снизу
+      // /admin НЕ регистрируем публично — команда остаётся рабочей,
+      // но в меню у обычных юзеров её не видно.
       await bot.api.setMyCommands([
         { command: 'start', description: 'Открыть меню' },
-        { command: 'admin', description: 'Админ-панель' },
       ]);
       await bot.api.setChatMenuButton({
         menu_button: { type: 'commands' },
