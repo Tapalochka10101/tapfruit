@@ -128,34 +128,8 @@ bot.callbackQuery(/^pay_sbp_(\d+)$/, async ctx => {
 
 /** Кнопка ПОДПИСКА → инфо. */
 bot.callbackQuery('subscription', async ctx => {
-  const tgId = BigInt(ctx.from.id);
-  const user = null; // TEMP
   await ctx.answerCallbackQuery();
-
-  if (!user) {
-    await ctx.editMessageText('Нажми /start чтобы создать аккаунт');
-    return;
-  }
-
-  const balanceRub = Number(user.balanceRub) / 100;
-  const daysLeft = user.subscriptionUntil
-    ? Math.max(0, Math.ceil((user.subscriptionUntil.getTime() - Date.now()) / 86400000))
-    : 0;
-
-  const text = daysLeft > 0
-    ? `✅ <b>У вас активна подписка</b>\n\n` +
-      `🍎 Можете играть спокойно!\n\n` +
-      `💰 Баланс: ${balanceRub.toFixed(2)}₽\n` +
-      `📅 Осталось дней: ${daysLeft}\n\n` +
-      `Средства списываются раз в 3 дня за активную подписку.`
-    : `⚠️ <b>Подписка неактивна</b>\n\n` +
-      `💰 Баланс: ${balanceRub.toFixed(2)}₽\n\n` +
-      `Пополните баланс, чтобы играть.`;
-
-  await ctx.editMessageText(text, {
-    reply_markup: new InlineKeyboard().text('⬅️ НАЗАД', 'menu'),
-    parse_mode: 'HTML',
-  });
+  await ctx.editMessageText('Нажми /start чтобы создать аккаунт');
 });
 
 
