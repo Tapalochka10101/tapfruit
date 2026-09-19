@@ -13,7 +13,16 @@ function mainMenu() {
     .text('💰 БАЛАНС', 'balance')
     .row()
     .text('📅 ПОДПИСКА', 'subscription')
-    .webApp('🍎 ИГРАТЬ', `https://frontend-sandy-eight-12.vercel.app`);
+    .text('🍎 ИГРАТЬ', 'play');
+}
+
+/** Меню с разблокированной кнопкой ИГРАТЬ (webApp). */
+function mainMenuUnlocked() {
+  return new InlineKeyboard()
+    .text('💰 БАЛАНС', 'balance')
+    .row()
+    .text('📅 ПОДПИСКА', 'subscription')
+    .webApp('🍎 ИГРАТЬ', 'https://frontend-sandy-eight-12.vercel.app');
 }
 
 /** Меню "Тарифы" (первый экран БАЛАНСА). */
@@ -219,3 +228,28 @@ export async function botWebhook(req: Request, res: Response, _next: NextFunctio
     }
   }
 }
+
+
+/** Кнопка ИГРАТЬ → проверяем подписку, разблокируем кнопку. */
+bot.callbackQuery('play', async ctx => {
+  await ctx.answerCallbackQuery();
+  if (!ctx.from) return;
+  const user = await prisma.user.findUnique({
+    where: { tgId: BigInt(ctx.from.id) },
+  });
+  if (!user) {
+    await ctx.editMessageText('Нажми /start чтобы создать аккаунт');
+    return;
+  }
+  const hasActive =
+    user.subscriptionUntil && user.subscriptionUntil > new Date();
+  if (!hasActive) {
+    await ctx.editMessageText(
+      '❌ <b>У вас нет активной подписки</b>\n\n' +
+      'Пожалуйста, оплатите подписку в разделе 💰 БАЛАНС.',
+      { parse_mode: 'HTML', reply_markup: mainMenu() },
+    );
+    return;
+  }
+  await ctx.editMessageReplyMarkup({ reply_markup: mainMenuUnlocked() });
+});
