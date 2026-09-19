@@ -187,7 +187,23 @@ bot.catch(err => {
   console.error('[bot] error:', err.error);
 });
 
-export const botWebhook = webhookCallback(bot, 'express', {
+import type { Request, Response, NextFunction } from 'express';
+
+const grammyWebhook = webhookCallback(bot, 'express', {
   timeoutMilliseconds: 10000,
   onTimeout: 'return',
 });
+
+export async function botWebhook(req: Request, res: Response, _next: NextFunction) {
+  try {
+    await grammyWebhook(req, res);
+    if (!res.headersSent) {
+      res.sendStatus(200);
+    }
+  } catch (err) {
+    console.error('[webhook] error:', err);
+    if (!res.headersSent) {
+      res.sendStatus(200);
+    }
+  }
+}
