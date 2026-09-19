@@ -357,6 +357,9 @@ type AdminPending =
   | { step: 'promo_await_code' }
   | { step: 'promo_await_maxuses'; code: string; reward: number }
   | { step: 'promo_await_uses'; code: string; reward: number }
+  | { step: 'promo_edit_code' }
+  | { step: 'promo_edit_choose'; code: string }
+  | { step: 'promo_edit_value'; code: string; field: 'reward' | 'maxUses'; reward: number; maxUses: number }
   | { step: 'promo_await_delete_code' };
 
 const pendingAdmin = new Map<number, AdminPending>();
@@ -571,11 +574,20 @@ bot.callbackQuery('admin_add_admin', async ctx => {
 function promoMenu() {
   return new InlineKeyboard()
     .text('➕ Добавить', 'promo_admin_add')
-    .text('🗑 Удалить', 'promo_admin_del')
+    .text('✏️ Редактировать', 'promo_admin_edit')
     .row()
-    .text('🔄 Обновить список', 'promo_admin_list')
+    .text('🗑 Удалить', 'promo_admin_del')
+    .text('🔄 Обновить', 'promo_admin_list')
     .row()
     .text('⬅️ Назад', 'admin_menu');
+}
+
+function promoEditFields(code: string) {
+  return new InlineKeyboard()
+    .text('💰 Тапсы', 'promo_edit_reward_' + code)
+    .text('🔢 Активации', 'promo_edit_maxuses_' + code)
+    .row()
+    .text('⬅️ Назад', 'promo_admin_list');
 }
 
 async function renderPromoList(ctx: any) {
@@ -608,6 +620,50 @@ bot.callbackQuery('promo_admin_add', async ctx => {
   pendingAdmin.set(ctx.from.id, { step: 'promo_await_code' });
   await ctx.editMessageText(
     '✏️ Отправь <b>название промокода</b> (латиница/цифры/подчёркивание).',
+    { parse_mode: 'HTML', reply_markup: new InlineKeyboard().text('⬅️ Отмена', 'promo_admin_list') },
+  );
+});
+
+bot.callbackQuery(/^promo_edit_reward_/, async ctx => {
+  await ctx.answerCallbackQuery();
+  if (!ctx.from || !isAdmin(ctx.from.username)) return;
+  const code = (ctx.callbackQuery.data || '').replace('promo_edit_reward_', '');
+  const all = await listPromos();
+  const found = all.find(p => p.code === code);
+  if (!found) return;
+  pendingAdmin.set(ctx.from.id, {
+    step: 'promo_edit_value', code, field: 'reward',
+    reward: Number(found.reward), maxUses: found.maxUses,
+  });
+  await ctx.editMessageText(
+    `✏️ Новое <b>количество тапсов</b> для <code>${code}</code>?`,
+    { parse_mode: 'HTML', reply_markup: new InlineKeyboard().text('⬅️ Отмена', 'promo_admin_list') },
+  );
+});
+
+bot.callbackQuery(/^promo_edit_maxuses_/, async ctx => {
+  await ctx.answerCallbackQuery();
+  if (!ctx.from || !isAdmin(ctx.from.username)) return;
+  const code = (ctx.callbackQuery.data || '').replace('promo_edit_maxuses_', '');
+  const all = await listPromos();
+  const found = all.find(p => p.code === code);
+  if (!found) return;
+  pendingAdmin.set(ctx.from.id, {
+    step: 'promo_edit_value', code, field: 'maxUses',
+    reward: Number(found.reward), maxUses: found.maxUses,
+  });
+  await ctx.editMessageText(
+    `✏️ Новое <b>количество активаций на игрока</b> для <code>${code}</code>?`,
+    { parse_mode: 'HTML', reply_markup: new InlineKeyboard().text('⬅️ Отмена', 'promo_admin_list') },
+  );
+});
+
+bot.callbackQuery('promo_admin_edit', async ctx => {
+  await ctx.answerCallbackQuery();
+  if (!ctx.from || !isAdmin(ctx.from.username)) return;
+  pendingAdmin.set(ctx.from.id, { step: 'promo_edit_code' });
+  await ctx.editMessageText(
+    '✏️ Отправь <b>название промокода</b> для редактирования.',
     { parse_mode: 'HTML', reply_markup: new InlineKeyboard().text('⬅️ Отмена', 'promo_admin_list') },
   );
 });
@@ -675,6 +731,51 @@ bot.callbackQuery('admin_users', async ctx => {
 bot.on('message:text', async ctx => {
   if (!ctx.from) return;
   const state = pendingAdmin.get(ctx.from.id);
+  // ===== Редактирование промокода =====
+  if (state && state.step === 'promo_edit_code' && ctx.from && isAdmin(ctx.from.username)) {
+    const raw = (ctx.message?.text ?? '').trim();
+    const code = raw.toLowerCase().replace(/[^a-z0-9_а-яё]/gi, '').slice(0, 32);
+    const all = await listPromos();
+    const found = all.find(p => p.code === code);
+    if (!found) {
+      await ctx.reply('❌ Промокод не найден.');
+      return;
+    }
+    pendingAdmin.delete(ctx.from.id);
+    await ctx.reply(
+      `✏️ Редактируем <code>${code}</code>\n• Тапсов: <b>${found.reward}</b>\n• Активаций на игрока: <b>${found.maxUses}</b>\n\nЧто меняем?`,
+      { parse_mode: 'HTML', reply_markup: promoEditFields(code) },
+    );
+    return;
+  }
+
+  if (state && state.step === 'promo_edit_value' && ctx.from && isAdmin(ctx.from.username)) {
+    const raw = (ctx.message?.text ?? '').trim();
+    const n = Number(raw.replace(/[^\d]/g, ''));
+    if (!Number.isFinite(n) || n <= 0 || !Number.isInteger(n)) {
+      await ctx.reply('❌ Нужно целое положительное число.');
+      return;
+    }
+    const newReward = state.field === 'reward' ? n : state.reward;
+    const newMaxUses = state.field === 'maxUses' ? n : state.maxUses;
+    try {
+      await upsertPromo({
+        code: state.code,
+        reward: BigInt(newReward),
+        maxUses: newMaxUses,
+        label: '+' + newReward + ' тапсов (×' + newMaxUses + ')',
+      });
+      pendingAdmin.delete(ctx.from.id);
+      await ctx.reply(
+        `✅ Обновлено:\n• <code>${state.code}</code>\n• Тапсов: +${newReward}\n• Активаций на игрока: ${newMaxUses}`,
+        { parse_mode: 'HTML', reply_markup: new InlineKeyboard().text('🎟 К промокодам', 'promo_admin_list') },
+      );
+    } catch (e: any) {
+      await ctx.reply('❌ Ошибка: ' + (e?.message ?? 'unknown'));
+    }
+    return;
+  }
+
   // ===== Промокоды =====
   if (state && state.step === 'promo_await_code' && ctx.from && isAdmin(ctx.from.username)) {
     const raw = (ctx.message?.text ?? '').trim();
