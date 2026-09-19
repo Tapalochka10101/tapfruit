@@ -58,6 +58,22 @@ const TXT = {
 /** /start */
 bot.command('start', async ctx => {
   try {
+    const from = ctx.from;
+    if (from) {
+      await prisma.user.upsert({
+        where: { tgId: BigInt(from.id) },
+        update: {
+          username: from.username ?? null,
+          firstName: from.first_name ?? null,
+        },
+        create: {
+          tgId: BigInt(from.id),
+          username: from.username ?? null,
+          firstName: from.first_name ?? null,
+        },
+      });
+      console.log('[start] user upserted:', from.id);
+    }
     await ctx.reply(
       '🍎 <b>Tap Fruit</b>\n\nВыбери действие:',
       { reply_markup: mainMenu(), parse_mode: 'HTML' },
@@ -129,7 +145,25 @@ bot.callbackQuery(/^pay_sbp_(\d+)$/, async ctx => {
 /** Кнопка ПОДПИСКА → инфо. */
 bot.callbackQuery('subscription', async ctx => {
   await ctx.answerCallbackQuery();
-  await ctx.editMessageText('Нажми /start чтобы создать аккаунт');
+  if (!ctx.from) return;
+  const user = await prisma.user.findUnique({
+    where: { tgId: BigInt(ctx.from.id) },
+  });
+  if (!user) {
+    await ctx.editMessageText('Нажми /start чтобы создать аккаунт');
+    return;
+  }
+  const until = user.subscriptionUntil
+    ? user.subscriptionUntil.toLocaleDateString('ru-RU')
+    : 'не активна';
+  const balanceRub = Number(user.balanceRub) / 100;
+  await ctx.editMessageText(
+    `📅 <b>Подписка</b>\n\n` +
+    `Статус: ${user.subscriptionUntil && user.subscriptionUntil > new Date() ? '✅ активна' : '❌ не активна'}\n` +
+    `Действует до: ${until}\n` +
+    `Баланс: ${balanceRub.toFixed(2)} ₽`,
+    { parse_mode: 'HTML', reply_markup: tariffMenu() },
+  );
 });
 
 
