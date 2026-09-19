@@ -179,18 +179,31 @@ minigamesRouter.get('/minigames/me', async (req, res) => {
 
 // ===================== УГАДАЙ СЛОВО =====================
 
+const WORDS_3 = [
+  'дом', 'кот', 'лук', 'сон', 'лес', 'мёд', 'час', 'год', 'бег', 'дым',
+  'шум', 'газ', 'пар', 'сок', 'суп', 'чай', 'рот', 'нос', 'зуб', 'глаз',
+  'куб', 'шар', 'мяч', 'рак', 'жук', 'меч', 'щит', 'ключ', 'меч', 'таз',
+  'холм', 'дуб', 'бак', 'бык', 'вол', 'воз', 'гад', 'гип', 'горн', 'гул',
+  'жал', 'жел', 'жир', 'зал', 'зов', 'кол', 'кот', 'кум', 'лак', 'лещ',
+];
+
 const WORDS_4 = [
   'окно', 'стол', 'вода', 'гора', 'река', 'луна', 'небо', 'свет', 'тень', 'снег',
   'поле', 'море', 'село', 'порт', 'метр', 'флаг', 'краб', 'слон', 'ключ', 'игра',
-  'шар', 'друг', 'брат', 'стул', 'шкаф', 'нота', 'пила', 'рука', 'нога', 'глаз',
-  'рот', 'нос', 'зуб', 'тело', 'душа', 'лист', 'куст', 'мост', 'хлеб', 'торт',
-  'суп', 'сок', 'чай', 'кофе', 'мёд', 'соль', 'сад', 'лес', 'парк', 'двор',
-  'пруд', 'гром', 'роса', 'иней', 'зной', 'лёд', 'танк', 'скот', 'стон', 'степ',
-  'дуга', 'лук', 'кот', 'моль', 'медь', 'цинк', 'нить', 'кожа', 'мех', 'воск',
-  'угол', 'круг', 'овал', 'куб', 'диск', 'луч', 'ток', 'газ', 'дым', 'пар',
-  'жук', 'паук', 'рак', 'час', 'год', 'путь', 'шаг', 'бег', 'ход', 'крик',
-  'шум', 'гул', 'стук', 'звон', 'зов', 'брак', 'кран', 'банк', 'свод', 'мир',
+  'друг', 'брат', 'стул', 'шкаф', 'нота', 'пила', 'рука', 'нога', 'тело', 'душа',
+  'лист', 'куст', 'мост', 'хлеб', 'торт', 'соль', 'пруд', 'гром', 'роса', 'иней',
+  'зной', 'танк', 'скот', 'стон', 'степ', 'дуга', 'медь', 'цинк', 'нить', 'кожа',
 ];
+
+const WORDS_5 = [
+  'книга', 'время', 'земля', 'птица', 'рыбак', 'сахар', 'слово', 'точка', 'ветер', 'птица',
+  'школа', 'доска', 'ручка', 'стена', 'океан', 'берег', 'закат', 'цветок', 'трава', 'лимон',
+  'банан', 'карто', 'кирпи', 'пчела', 'сапог', 'шапка', 'сумка', 'футбо', 'хокке', 'театр',
+  'актер', 'артис', 'лодка', 'флот', 'погон', 'знамя', 'копьё', 'мечет', 'врата', 'герой',
+  'пират', 'рой', 'рояль', 'сцена', 'сюжет', 'талант', 'финал', 'фишка', 'фокус', 'юмор',
+];
+
+const WORDS_BY_LEN: Record<number, string[]> = { 3: WORDS_3, 4: WORDS_4, 5: WORDS_5 };
 
 type WordSession = {
   userId: string;
@@ -218,25 +231,27 @@ if (typeof (cleanupTimer as any).unref === 'function') (cleanupTimer as any).unr
 
 const WordStartSchema = z.object({
   bet: z.number().int().min(MIN_BET).max(MAX_BET),
+  wordLength: z.union([z.literal(3), z.literal(4), z.literal(5)]),
 });
 
 minigamesRouter.post('/minigames/word/start', async (req, res) => {
   const parsed = WordStartSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'bad_payload' });
-  const { bet } = parsed.data;
+  const { bet, wordLength } = parsed.data;
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
   if (user.chips < BigInt(bet)) return res.status(400).json({ error: 'insufficient_chips' });
 
-  const word = WORDS_4[Math.floor(Math.random() * WORDS_4.length)];
+  const pool = WORDS_BY_LEN[wordLength];
+  const word = pool[Math.floor(Math.random() * pool.length)];
   const sessionId = newSessionId();
 
   wordSessions.set(sessionId, {
     userId: req.userId!,
     word,
     bet,
-    attemptsLeft: 4,
+    attemptsLeft: wordLength + 1,
     guessed: new Set(),
-    revealed: [false, false, false, false],
+    revealed: new Array(wordLength).fill(false),
     startedAt: Date.now(),
   });
 
@@ -248,8 +263,9 @@ minigamesRouter.post('/minigames/word/start', async (req, res) => {
   res.json({
     ok: true,
     sessionId,
-    masked: ['_', '_', '_', '_'],
-    attemptsLeft: 4,
+    wordLength,
+    masked: new Array(wordLength).fill('_'),
+    attemptsLeft: wordLength + 1,
     chips: updated.chips.toString(),
   });
 });
@@ -268,6 +284,7 @@ minigamesRouter.post('/minigames/word/guess', async (req, res) => {
   if (session.userId !== req.userId!) return res.status(403).json({ error: 'forbidden' });
 
   const L = letter.toUpperCase();
+  const wordLen = session.word.length;
   if (session.guessed.has(L)) {
     return res.json({
       ok: true,
@@ -281,7 +298,7 @@ minigamesRouter.post('/minigames/word/guess', async (req, res) => {
 
   const wordUp = session.word.toUpperCase();
   let correct = false;
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < wordLen; i++) {
     if (wordUp[i] === L && !session.revealed[i]) {
       session.revealed[i] = true;
       correct = true;
