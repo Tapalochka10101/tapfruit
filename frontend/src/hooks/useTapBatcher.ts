@@ -42,13 +42,19 @@ export function useTapBatcher() {
       // А balance перезаписываем ТОЛЬКО когда всё осело:
       // буфер пуст и в полёте не осталось других батчей.
       // Иначе мы бы затирали локальный оптимистичный баланс более старым серверным.
-      const idle = bufferRef.current === 0 && pendingRef.current === 0;
-      if (idle) {
-        patch.balance = Number(r.balance);
+      // Если сервер отклонил — НЕ трогаем balance (иначе UI откатится),
+      // просто сбрасываем индекс сессии.
+      if (r.rejected) {
+        sessionStartIdxRef.current = null;
+        pendingRef.current -= count; // уже вычли выше, но оставим для страховки
+      } else {
+        const idle = bufferRef.current === 0 && pendingRef.current === 0;
+        if (idle) {
+          patch.balance = Number(r.balance);
+        }
       }
 
       useGame.setState(patch);
-      if (r.rejected) sessionStartIdxRef.current = null;
     } catch (e) {
       pendingRef.current -= count;
       bufferRef.current += count;
