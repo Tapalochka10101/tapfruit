@@ -178,6 +178,16 @@ export default function App() {
       {/* Нижний спейсер */}
       <div className="flex-1 min-h-0" />
 
+      {secretUnlocked && (
+        <div className="px-3 pb-2 flex justify-end relative z-50">
+          <button
+            onClick={() => setSecretOpen(true)}
+            className="w-11 h-11 rounded-full bg-slate-800/80 text-white text-xl shadow-lg active:scale-95 flex items-center justify-center"
+            aria-label="secret"
+          >🕹</button>
+        </div>
+      )}
+
       <div className="pb-6 px-3 flex justify-between items-end gap-2 relative z-50">
         <button
           onClick={() => setGamesOpen(true)}
@@ -200,14 +210,6 @@ export default function App() {
       </div>
 
       <BananaBoostButton />
-
-      {secretUnlocked && (
-        <button
-          onClick={() => setSecretOpen(true)}
-          className="absolute top-3 right-3 z-40 w-11 h-11 rounded-full bg-slate-800/80 text-white text-xl shadow-lg active:scale-95 flex items-center justify-center"
-          aria-label="secret"
-        >🕹</button>
-      )}
 
       <ShopSheet open={shopOpen} onClose={() => setShopOpen(false)} />
       <SettingsSheet
