@@ -66,6 +66,10 @@ export const api = {
     req<any>('/minigames/durak/attack', { method: 'POST', body: JSON.stringify({ sessionId, cardIndex }) }),
   durakDefend: (sessionId: string, cardIndex: number | null) =>
     req<any>('/minigames/durak/defend', { method: 'POST', body: JSON.stringify({ sessionId, cardIndex }) }),
+  checkersStart: (bet: number) =>
+    req<any>('/minigames/checkers/start', { method: 'POST', body: JSON.stringify({ bet }) }),
+  checkersMove: (sessionId: string, from: number, to: number) =>
+    req<any>('/minigames/checkers/move', { method: 'POST', body: JSON.stringify({ sessionId, from, to }) }),
 };
 
 export type MeResponse = {

@@ -39,10 +39,58 @@ export function SecretGamesSheet({ open, onClose }: { open: boolean; onClose: ()
   const [betInput, setBetInput] = useState('10');
   const [durak, setDurak] = useState<DurakState | null>(null);
 
+  const [checkersBet, setCheckersBet] = useState('10');
+  const [checkers, setCheckers] = useState<{
+    sessionId: string;
+    board: string[];
+    status: 'playing' | 'won' | 'lost';
+    selected: number | null;
+  } | null>(null);
+
   const close = () => {
     setSelected(null);
     setDurak(null);
+    setCheckers(null);
     onClose();
+  };
+
+  const startCheckers = async () => {
+    const b = Number(checkersBet) || 0;
+    if (b < 1 || b > chips) return;
+    try {
+      const r = await api.checkersStart(b);
+      setChips(Number(r.chips));
+      setCheckers({
+        sessionId: r.sessionId,
+        board: r.board,
+        status: 'playing',
+        selected: null,
+      });
+    } catch (e: any) { alert(e?.body?.error || 'Error'); }
+  };
+
+  const ckTapCell = async (i: number) => {
+    if (!checkers || checkers.status !== 'playing') return;
+    const piece = checkers.board[i];
+
+    // тап на свою шашку — выделить/снять
+    if (piece === 'w') {
+      setCheckers({ ...checkers, selected: checkers.selected === i ? null : i });
+      return;
+    }
+    // тап на пустую или чужую — пытаемся ходить
+    if (checkers.selected === null) return;
+
+    try {
+      const r = await api.checkersMove(checkers.sessionId, checkers.selected, i);
+      if (r.chips) setChips(Number(r.chips));
+      setCheckers({
+        sessionId: checkers.sessionId,
+        board: r.board,
+        status: r.status,
+        selected: null,
+      });
+    } catch (e: any) { alert(e?.body?.error || 'Error'); }
   };
 
   const startDurak = async () => {
@@ -229,14 +277,74 @@ export function SecretGamesSheet({ open, onClose }: { open: boolean; onClose: ()
         </div>
       )}
 
-      {selected === 'checkers' && (
+      {selected === 'checkers' && !checkers && (
         <div className="space-y-3">
-          <div className="text-center text-2xl font-black">⚫ Шашки</div>
-          <div className="text-center py-6 text-[var(--tg-hint)]">Скоро…</div>
+          <div className="text-xs text-[var(--tg-hint)] text-center">Количество</div>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={checkersBet}
+            onChange={e => setCheckersBet(e.target.value.replace(/\D/g, '').slice(0, 9))}
+            placeholder="0"
+            className="w-full py-4 rounded-2xl bg-[var(--tg-card)] text-center font-black text-2xl tabular-nums"
+          />
+          <div className="text-[10px] text-[var(--tg-hint)] text-center">доступно: {fmt(chips)} 🪙</div>
+          <button
+            onClick={startCheckers}
+            disabled={(Number(checkersBet) || 0) < 1 || (Number(checkersBet) || 0) > chips}
+            className={`w-full py-6 rounded-2xl font-black text-lg transition ${(Number(checkersBet) || 0) > 0 && (Number(checkersBet) || 0) <= chips ? 'bg-gradient-to-br from-emerald-500 to-teal-700 text-white active:scale-95' : 'bg-gray-300 text-gray-500'}`}
+          >⚫ Начать игру</button>
           <button
             onClick={() => setSelected(null)}
             className="w-full py-3 rounded-2xl bg-[var(--tg-card)] font-bold text-sm active:scale-95"
           >← Назад</button>
+        </div>
+      )}
+
+      {selected === 'checkers' && checkers && (
+        <div className="space-y-3">
+          <div className="text-center text-xs text-[var(--tg-hint)]">
+            Ты — ○ (белые), бот — ● (чёрные)
+          </div>
+          <div className="grid grid-cols-8 gap-0 mx-auto" style={{ width: 'min(100%, 320px)' }}>
+            {checkers.board.map((cell, i) => {
+              const r = Math.floor(i / 8), c = i % 8;
+              const dark = (r + c) % 2 === 1;
+              const isSel = checkers.selected === i;
+              return (
+                <button
+                  key={i}
+                  onClick={() => ckTapCell(i)}
+                  disabled={checkers.status !== 'playing'}
+                  className={`aspect-square flex items-center justify-center text-2xl ${
+                    dark ? 'bg-slate-700' : 'bg-slate-300'
+                  } ${isSel ? 'ring-2 ring-yellow-400 ring-inset' : ''}`}
+                >
+                  {cell === 'w' && <span className="text-white drop-shadow">○</span>}
+                  {cell === 'b' && <span className="text-slate-900 drop-shadow">●</span>}
+                </button>
+              );
+            })}
+          </div>
+
+          {checkers.status === 'playing' && (
+            <div className="text-center text-xs text-[var(--tg-hint)]">
+              {checkers.selected === null ? 'Тапни свою шашку' : 'Тапни клетку для хода'}
+            </div>
+          )}
+
+          {(checkers.status === 'won' || checkers.status === 'lost') && (
+            <div className={`text-center py-4 rounded-2xl font-black ${checkers.status === 'won' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+              <div className="text-2xl mb-1">
+                {checkers.status === 'won' ? '🎉 ПОБЕДА! +100%' : '😢 Проиграл'}
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={() => { setCheckers(null); setSelected(null); }}
+            className="w-full py-3 rounded-2xl bg-[var(--tg-card)] font-bold text-sm active:scale-95"
+          >← К секретным играм</button>
         </div>
       )}
     </Modal>
