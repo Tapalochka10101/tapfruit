@@ -32,6 +32,7 @@ let uid = 0;
 export default function App() {
   const ready = useGame(s => s.ready);
   const subscriptionActive = useGame(s => s.subscriptionActive);
+  const secretUnlocked = useGame(s => s.secretUnlocked);
   const init = useGame(s => s.init);
   const activeSkin = useGame(s => s.activeSkin);
   const upgradeLevel = useGame(s => s.upgradeLevel);
