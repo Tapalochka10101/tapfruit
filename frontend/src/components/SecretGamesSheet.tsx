@@ -11,6 +11,7 @@ type CheckersState = {
   status: 'playing' | 'won' | 'lost';
   selected: number | null;
   chainFrom: number | null;
+  legal: { from: number; to: number }[];
 };
 
 export function SecretGamesSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -20,12 +21,9 @@ export function SecretGamesSheet({ open, onClose }: { open: boolean; onClose: ()
   const [tab, setTab] = useState<'menu' | 'checkers'>('menu');
   const [betInput, setBetInput] = useState('10');
   const [ck, setCk] = useState<CheckersState | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const close = () => {
-    setTab('menu');
-    setCk(null);
-    onClose();
-  };
+  const close = () => { setTab('menu'); setCk(null); onClose(); };
 
   const startCheckers = async () => {
     const b = Number(betInput) || 0;
@@ -34,51 +32,19 @@ export function SecretGamesSheet({ open, onClose }: { open: boolean; onClose: ()
       const r = await api.checkersStart(b);
       setChips(Number(r.chips));
       setCk({
-        sessionId: r.sessionId,
-        board: r.board,
-        status: 'playing',
-        selected: null,
-        chainFrom: null,
+        sessionId: r.sessionId, board: r.board, status: 'playing',
+        selected: null, chainFrom: null, legal: r.legal ?? [],
       });
     } catch (e: any) { alert(e?.body?.error || 'Error'); }
   };
 
   const isWhite = (p: string) => p === 'w' || p === 'W';
-  const isBlack = (p: string) => p === 'b' || p === 'B';
 
-  const ckTapCell = async (i: number) => {
-    if (!ck || ck.status !== 'playing') return;
-    const piece = ck.board[i];
-
-    // если цепочка идёт — можно только этой шашкой
-    if (ck.chainFrom !== null) {
-      if (i === ck.chainFrom) return; // уже выбрана
-      if (isWhite(piece)) return; // нельзя выбрать другую
-      // пробуем ход
-      try {
-        const r = await api.checkersMove(ck.sessionId, ck.chainFrom, i);
-        if (r.chips) setChips(Number(r.chips));
-        setCk({
-          sessionId: ck.sessionId,
-          board: r.board,
-          status: r.status,
-          selected: null,
-          chainFrom: r.chainFrom ?? null,
-        });
-      } catch (e: any) { alert(e?.body?.error || 'Error'); }
-      return;
-    }
-
-    // выбор своей шашки
-    if (isWhite(piece)) {
-      setCk({ ...ck, selected: ck.selected === i ? null : i });
-      return;
-    }
-
-    if (ck.selected === null) return;
-
+  const sendMove = async (from: number, to: number) => {
+    if (!ck || busy) return;
+    setBusy(true);
     try {
-      const r = await api.checkersMove(ck.sessionId, ck.selected, i);
+      const r = await api.checkersMove(ck.sessionId, from, to);
       if (r.chips) setChips(Number(r.chips));
       setCk({
         sessionId: ck.sessionId,
@@ -86,9 +52,58 @@ export function SecretGamesSheet({ open, onClose }: { open: boolean; onClose: ()
         status: r.status,
         selected: null,
         chainFrom: r.chainFrom ?? null,
+        legal: r.legal ?? [],
       });
+      // плавность: показываем промежуточный, потом финал
+      if (r.boardAfterPlayer && r.status === 'playing') {
+        setCk(prev => prev ? { ...prev, board: r.boardAfterPlayer } : null);
+        setTimeout(() => {
+          setCk(prev => prev ? { ...prev, board: r.board, legal: r.legal ?? [] } : null);
+        }, 500);
+      }
     } catch (e: any) { alert(e?.body?.error || 'Error'); }
+    finally { setTimeout(() => setBusy(false), 200); }
   };
+
+  const ckTapCell = (i: number) => {
+    if (!ck || ck.status !== 'playing' || busy) return;
+
+    // цепочка — можно бить только этой шашкой
+    if (ck.chainFrom !== null) {
+      if (i === ck.chainFrom) return;
+      if (ck.legal.some(m => m.from === ck.chainFrom && m.to === i)) {
+        sendMove(ck.chainFrom, i);
+      }
+      return;
+    }
+
+    // если выбрана шашка — проверяем что тап по legal to
+    if (ck.selected !== null) {
+      if (ck.legal.some(m => m.from === ck.selected && m.to === i)) {
+        sendMove(ck.selected, i);
+        return;
+      }
+    }
+
+    // выбираем свою шашку (только если для неё есть ходы)
+    const piece = ck.board[i];
+    if (isWhite(piece) && ck.legal.some(m => m.from === i)) {
+      setCk({ ...ck, selected: ck.selected === i ? null : i });
+    } else if (isWhite(piece)) {
+      // нет ходов у этой шашки — не выделяем
+      setCk({ ...ck, selected: null });
+    } else {
+      setCk({ ...ck, selected: null });
+    }
+  };
+
+  // множество подсвечиваемых клеток
+  const targets: number[] = (() => {
+    if (!ck) return [];
+    if (ck.chainFrom !== null) return ck.legal.filter(m => m.from === ck.chainFrom).map(m => m.to);
+    if (ck.selected !== null) return ck.legal.filter(m => m.from === ck.selected).map(m => m.to);
+    return [];
+  })();
 
   return (
     <Modal open={open} onClose={close} title="🕹 Секретные игры">
@@ -114,9 +129,7 @@ export function SecretGamesSheet({ open, onClose }: { open: boolean; onClose: ()
         <div className="space-y-3">
           <div className="text-xs text-[var(--tg-hint)] text-center">Количество</div>
           <input
-            type="text"
-            inputMode="numeric"
-            value={betInput}
+            type="text" inputMode="numeric" value={betInput}
             onChange={e => setBetInput(e.target.value.replace(/\D/g, '').slice(0, 9))}
             placeholder="0"
             className="w-full py-4 rounded-2xl bg-[var(--tg-card)] text-center font-black text-2xl tabular-nums"
@@ -127,17 +140,14 @@ export function SecretGamesSheet({ open, onClose }: { open: boolean; onClose: ()
             disabled={(Number(betInput) || 0) < 1 || (Number(betInput) || 0) > chips}
             className={`w-full py-6 rounded-2xl font-black text-lg transition ${(Number(betInput) || 0) > 0 && (Number(betInput) || 0) <= chips ? 'bg-gradient-to-br from-emerald-500 to-teal-700 text-white active:scale-95' : 'bg-gray-300 text-gray-500'}`}
           >⚫ Начать игру</button>
-          <button
-            onClick={() => setTab('menu')}
-            className="w-full py-3 rounded-2xl bg-[var(--tg-card)] font-bold text-sm active:scale-95"
-          >← Назад</button>
+          <button onClick={() => setTab('menu')} className="w-full py-3 rounded-2xl bg-[var(--tg-card)] font-bold text-sm active:scale-95">← Назад</button>
         </div>
       )}
 
       {tab === 'checkers' && ck && (
         <div className="space-y-3">
           <div className="text-center text-xs text-[var(--tg-hint)]">
-            Ты — ○ (белые), бот — ● (чёрные). Дамка — ✪
+            Ты — ○ (белые), бот — ●. Дамка — ✪
           </div>
 
           <div className="grid grid-cols-8 gap-0 mx-auto rounded-xl overflow-hidden" style={{ width: 'min(100%, 320px)' }}>
@@ -146,6 +156,7 @@ export function SecretGamesSheet({ open, onClose }: { open: boolean; onClose: ()
               const dark = (r + c) % 2 === 1;
               const isSel = ck.selected === i;
               const isChain = ck.chainFrom === i;
+              const isTarget = targets.includes(i);
               const highlight = isSel || isChain;
 
               let glyph: string | null = null;
@@ -160,15 +171,20 @@ export function SecretGamesSheet({ open, onClose }: { open: boolean; onClose: ()
                   key={i}
                   onClick={() => ckTapCell(i)}
                   disabled={ck.status !== 'playing'}
-                  className={`aspect-square flex items-center justify-center text-2xl transition-colors duration-150 ${
+                  className={`relative aspect-square flex items-center justify-center text-2xl transition-colors duration-200 ${
                     dark ? 'bg-slate-700' : 'bg-slate-300'
                   } ${highlight ? 'ring-2 ring-yellow-400 ring-inset' : ''}`}
                 >
+                  {isTarget && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-3 h-3 rounded-full bg-emerald-400/70 animate-pulse" />
+                    </div>
+                  )}
                   {glyph && (
                     <motion.span
-                      initial={{ scale: 0.6, opacity: 0 }}
+                      initial={{ scale: 0.5, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
-                      transition={{ duration: 0.18 }}
+                      transition={{ duration: 0.22, type: 'spring', stiffness: 220 }}
                       className={`drop-shadow ${cls}`}
                     >{glyph}</motion.span>
                   )}
@@ -179,11 +195,9 @@ export function SecretGamesSheet({ open, onClose }: { open: boolean; onClose: ()
 
           {ck.status === 'playing' && (
             <div className="text-center text-xs text-[var(--tg-hint)]">
-              {ck.chainFrom !== null
-                ? 'Продолжай бить этой же шашкой'
-                : ck.selected === null
-                  ? 'Тапни свою шашку'
-                  : 'Тапни клетку для хода'}
+              {ck.chainFrom !== null ? 'Продолжай бить этой же шашкой'
+                : ck.selected === null ? 'Тапни свою шашку'
+                : 'Тапни зелёную точку'}
             </div>
           )}
 
