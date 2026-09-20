@@ -168,6 +168,311 @@ minigamesRouter.post('/minigames/play', async (req, res) => {
   });
 });
 
+
+
+// ===================== ДУРАК =====================
+
+type DurakCard = { suit: '♠' | '♥' | '♦' | '♣'; rank: number };
+type DurakSession = {
+  userId: string;
+  bet: number;
+  deck: DurakCard[];
+  playerHand: DurakCard[];
+  botHand: DurakCard[];
+  table: { attack: DurakCard; defend?: DurakCard }[];
+  trumpSuit: '♠' | '♥' | '♦' | '♣';
+  trumpCard: DurakCard;
+  turn: 'player' | 'bot';
+  finished: boolean;
+  result?: 'won' | 'lost';
+  startedAt: number;
+};
+
+const durakSessions = new Map<string, DurakSession>();
+
+const SUITS: ('♠' | '♥' | '♦' | '♣')[] = ['♠', '♥', '♦', '♣'];
+
+function durakRankLabel(r: number): string {
+  if (r <= 10) return String(r);
+  if (r === 11) return 'В';
+  if (r === 12) return 'Д';
+  if (r === 13) return 'К';
+  return 'Т';
+}
+
+function durakBeats(attack: DurakCard, defend: DurakCard, trumpSuit: string): boolean {
+  if (defend.suit === attack.suit) return defend.rank > attack.rank;
+  if (defend.suit === trumpSuit && attack.suit !== trumpSuit) return true;
+  return false;
+}
+
+function durakBeatsLabel(c: DurakCard): string {
+  return c.suit + durakRankLabel(c.rank);
+}
+
+function durakNewDeck(): { deck: DurakCard[]; trumpSuit: '♠' | '♥' | '♦' | '♣'; trumpCard: DurakCard } {
+  const cards: DurakCard[] = [];
+  for (const suit of SUITS) {
+    for (let r = 6; r <= 14; r++) cards.push({ suit, rank: r });
+  }
+  // перемешать
+  for (let i = cards.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cards[i], cards[j]] = [cards[j], cards[i]];
+  }
+  const trumpCard = cards[cards.length - 1];
+  return { deck: cards, trumpSuit: trumpCard.suit, trumpCard };
+}
+
+function durakBotDefend(s: DurakSession): DurakCard | null {
+  const attack = s.table[s.table.length - 1].attack;
+  // ищем все карты, которые бьют
+  const candidates = s.botHand.filter(c => durakBeats(attack, c, s.trumpSuit));
+  if (candidates.length === 0) return null;
+  // выбираем самую слабую
+  candidates.sort((a, b) => {
+    const aTrump = a.suit === s.trumpSuit ? 1 : 0;
+    const bTrump = b.suit === s.trumpSuit ? 1 : 0;
+    if (aTrump !== bTrump) return aTrump - bTrump;
+    return a.rank - b.rank;
+  });
+  return candidates[0];
+}
+
+function durakBotAttack(s: DurakSession): DurakCard | null {
+  // бот атакует: выбирает самую слабую карту не козырь
+  if (s.botHand.length === 0) return null;
+  const sorted = [...s.botHand].sort((a, b) => {
+    const aTrump = a.suit === s.trumpSuit ? 1 : 0;
+    const bTrump = b.suit === s.trumpSuit ? 1 : 0;
+    if (aTrump !== bTrump) return aTrump - bTrump;
+    return a.rank - b.rank;
+  });
+  return sorted[0];
+}
+
+function durakDrawCards(s: DurakSession): void {
+  while (s.playerHand.length < 6 && s.deck.length > 0) s.playerHand.push(s.deck.pop()!);
+  while (s.botHand.length < 6 && s.deck.length > 0) s.botHand.push(s.deck.pop()!);
+}
+
+const DurakStartSchema = z.object({
+  bet: z.number().int().min(MIN_BET).max(MAX_BET),
+});
+
+minigamesRouter.post('/minigames/durak/start', async (req, res) => {
+  const parsed = DurakStartSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'bad_payload' });
+  const { bet } = parsed.data;
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
+  if (user.chips < BigInt(bet)) return res.status(400).json({ error: 'insufficient_chips' });
+
+  const { deck, trumpSuit, trumpCard } = durakNewDeck();
+  const playerHand: DurakCard[] = [];
+  const botHand: DurakCard[] = [];
+  for (let i = 0; i < 6; i++) {
+    playerHand.push(deck.pop()!);
+    botHand.push(deck.pop()!);
+  }
+
+  const sessionId = newSessionId();
+  // игрок всегда ходит первым (упрощение)
+  durakSessions.set(sessionId, {
+    userId: req.userId!,
+    bet,
+    deck,
+    playerHand,
+    botHand,
+    table: [],
+    trumpSuit,
+    trumpCard,
+    turn: 'player',
+    finished: false,
+    startedAt: Date.now(),
+  });
+
+  const updated = await prisma.user.update({
+    where: { id: user.id },
+    data: { chips: { decrement: BigInt(bet) } },
+  });
+
+  res.json({
+    ok: true,
+    sessionId,
+    playerHand,
+    botHandSize: botHand.length,
+    trumpSuit,
+    trumpCard,
+    table: [],
+    turn: 'player',
+    chips: updated.chips.toString(),
+  });
+});
+
+const DurakAttackSchema = z.object({
+  sessionId: z.string(),
+  cardIndex: z.number().int().min(0).max(20),
+});
+
+minigamesRouter.post('/minigames/durak/attack', async (req, res) => {
+  const parsed = DurakAttackSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'bad_payload' });
+  const { sessionId, cardIndex } = parsed.data;
+  const s = durakSessions.get(sessionId);
+  if (!s) return res.status(404).json({ error: 'session_not_found' });
+  if (s.userId !== req.userId!) return res.status(403).json({ error: 'forbidden' });
+  if (s.finished) return res.status(400).json({ error: 'finished' });
+  if (s.turn !== 'player') return res.status(400).json({ error: 'not_your_turn' });
+  if (cardIndex >= s.playerHand.length) return res.status(400).json({ error: 'bad_card_index' });
+
+  const card = s.playerHand.splice(cardIndex, 1)[0];
+  s.table.push({ attack: card });
+
+  // бот пытается отбить
+  const defend = durakBotDefend(s);
+  if (defend) {
+    // отбивает
+    const idx = s.botHand.indexOf(defend);
+    s.botHand.splice(idx, 1);
+    s.table[s.table.length - 1].defend = defend;
+    durakDrawCards(s);
+    // ход остаётся у игрока — можно подкидывать, но упростим: если у бота нет карт, победа
+    if (s.botHand.length === 0 && s.deck.length === 0) {
+      s.finished = true;
+      s.result = 'won';
+      const reward = BigInt(s.bet * 2);
+      const u = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
+      const upd = await prisma.user.update({
+        where: { id: u.id },
+        data: { chips: { increment: reward } },
+      });
+      durakSessions.delete(sessionId);
+      return res.json({
+        ok: true, table: s.table, playerHand: s.playerHand,
+        botHandSize: s.botHand.length, turn: 'player',
+        status: 'won', chips: upd.chips.toString(),
+      });
+    }
+    return res.json({
+      ok: true, table: s.table, playerHand: s.playerHand,
+      botHandSize: s.botHand.length, turn: 'player',
+      status: 'playing',
+    });
+  } else {
+    // бот берёт карты со стола
+    for (const row of s.table) {
+      s.botHand.push(row.attack);
+      if (row.defend) s.botHand.push(row.defend);
+    }
+    s.table = [];
+    durakDrawCards(s);
+    // ход переходит к боту
+    s.turn = 'bot';
+  }
+
+  // ход бота
+  const botCard = durakBotAttack(s);
+  if (botCard) {
+    const bi = s.botHand.indexOf(botCard);
+    s.botHand.splice(bi, 1);
+    s.table.push({ attack: botCard });
+
+    // ищем отбивку у игрока — но игрок должен сам выбрать
+    // упрощение: игрок должен отбить через /durak/defend, но пока сделаем авто-проверку
+    // На самом деле просто оставим ход игроку и он должен отбить или взять
+    s.turn = 'player';
+    return res.json({
+      ok: true, table: s.table, playerHand: s.playerHand,
+      botHandSize: s.botHand.length, turn: 'player',
+      status: 'defend_required',
+    });
+  } else {
+    // у бота нет карт — он не может атаковать, значит он взял и ход снова игроку
+    s.turn = 'player';
+  }
+
+  res.json({
+    ok: true, table: s.table, playerHand: s.playerHand,
+    botHandSize: s.botHand.length, turn: 'player',
+    status: 'playing',
+  });
+});
+
+const DurakDefendSchema = z.object({
+  sessionId: z.string(),
+  cardIndex: z.number().int().min(0).max(20).nullable(),
+});
+
+minigamesRouter.post('/minigames/durak/defend', async (req, res) => {
+  const parsed = DurakDefendSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'bad_payload' });
+  const { sessionId, cardIndex } = parsed.data;
+  const s = durakSessions.get(sessionId);
+  if (!s) return res.status(404).json({ error: 'session_not_found' });
+  if (s.userId !== req.userId!) return res.status(403).json({ error: 'forbidden' });
+  if (s.finished) return res.status(400).json({ error: 'finished' });
+
+  const lastRow = s.table[s.table.length - 1];
+  if (!lastRow || lastRow.defend) return res.status(400).json({ error: 'nothing_to_defend' });
+
+  if (cardIndex === null) {
+    // игрок берёт
+    for (const row of s.table) {
+      s.playerHand.push(row.attack);
+      if (row.defend) s.playerHand.push(row.defend);
+    }
+    s.table = [];
+    durakDrawCards(s);
+    // ход у бота
+    s.turn = 'bot';
+  } else {
+    if (cardIndex >= s.playerHand.length) return res.status(400).json({ error: 'bad_card_index' });
+    const def = s.playerHand[cardIndex];
+    if (!durakBeats(lastRow.attack, def, s.trumpSuit)) {
+      return res.status(400).json({ error: 'card_does_not_beat' });
+    }
+    s.playerHand.splice(cardIndex, 1);
+    lastRow.defend = def;
+    durakDrawCards(s);
+    s.turn = 'player';
+  }
+
+  // проверка конца
+  if (s.playerHand.length === 0 && s.deck.length === 0) {
+    s.finished = true;
+    s.result = 'won';
+    const reward = BigInt(s.bet * 2);
+    const u = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
+    const upd = await prisma.user.update({
+      where: { id: u.id },
+      data: { chips: { increment: reward } },
+    });
+    durakSessions.delete(sessionId);
+    return res.json({
+      ok: true, table: [], playerHand: s.playerHand,
+      botHandSize: s.botHand.length, turn: 'player',
+      status: 'won', chips: upd.chips.toString(),
+    });
+  }
+  if (s.botHand.length === 0 && s.deck.length === 0 && s.turn === 'player') {
+    s.finished = true;
+    s.result = 'lost';
+    const u = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
+    durakSessions.delete(sessionId);
+    return res.json({
+      ok: true, table: [], playerHand: s.playerHand,
+      botHandSize: 0, turn: 'player',
+      status: 'lost', chips: u.chips.toString(),
+    });
+  }
+
+  res.json({
+    ok: true, table: s.table, playerHand: s.playerHand,
+    botHandSize: s.botHand.length, turn: 'player',
+    status: 'playing',
+  });
+});
+
 minigamesRouter.get('/minigames/me', async (req, res) => {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
   res.json({
