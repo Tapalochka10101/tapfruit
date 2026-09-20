@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma.js';
 
 export const minigamesRouter = Router();
 
-const CHIPS_PER_TAP = 100n;
+const CHIPS_PER_TAP = 500n;
 const MIN_BET = 10;
 const MAX_BET = 1_000_000;
 
@@ -148,7 +148,7 @@ minigamesRouter.post('/minigames/play', async (req, res) => {
     default:          detail = isA ? 'A' : 'B';
   }
 
-  const chipsDelta = won ? BigInt(bet * 2) : -BigInt(bet);
+  const chipsDelta = won ? BigInt(bet) : -BigInt(bet);
   const updated = await prisma.user.update({
     where: { id: user.id },
     data: { chips: { increment: chipsDelta } },
