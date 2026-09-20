@@ -647,7 +647,9 @@ function ckMinimax(
   depth: number,
   alpha: number,
   beta: number,
+  deadline: number,
 ): { score: number; move?: CheckerMove } {
+  if (Date.now() > deadline) return { score: isWhite ? -900 : 900 };
   const moves = ckAllMoves(board, isWhite);
   if (moves.length === 0) return { score: isWhite ? -1000 - depth : 1000 + depth };
   if (depth === 0) return { score: ckEvaluate(board) };
@@ -656,38 +658,55 @@ function ckMinimax(
     ? { score: -Infinity }
     : { score: Infinity };
 
-  // Сортируем ходы: сначала взятия (сразу режем ветки), потом остальные.
+  // Сортируем ходы: взятия первыми, потом продвижение вперёд
   const sorted = [...moves].sort((a, b) => {
-    const av = a.capture !== undefined ? 1 : 0;
-    const bv = b.capture !== undefined ? 1 : 0;
-    return bv - av;
+    const ac = a.capture !== undefined ? 2 : 0;
+    const bc = b.capture !== undefined ? 2 : 0;
+    if (ac !== bc) return bc - ac;
+    const [ar] = ckRC(a.from), [br] = ckRC(b.from);
+    const [atr] = ckRC(a.to), [btr] = ckRC(b.to);
+    const aAdv = isWhite ? (ar - atr) : (atr - ar);
+    const bAdv = isWhite ? (br - btr) : (btr - br);
+    return bAdv - aAdv;
   });
 
   for (const m of sorted) {
+    if (Date.now() > deadline) break;
     const nb = ckApplyMove(board, m);
-    const r = ckMinimax(nb, !isWhite, depth - 1, alpha, beta);
-
+    const r = ckMinimax(nb, !isWhite, depth - 1, alpha, beta, deadline);
     if (isWhite) {
       if (r.score > best.score) best = { score: r.score, move: m };
       if (best.score > alpha) alpha = best.score;
-      if (alpha >= beta) break; // отсечение
     } else {
       if (r.score < best.score) best = { score: r.score, move: m };
       if (best.score < beta) beta = best.score;
-      if (alpha >= beta) break;
     }
+    if (alpha >= beta) break;
   }
   return best;
 }
 
+/** Iterative deepening с жёстким лимитом времени. */
 function ckBotMove(board: CheckerBoard): CheckerMove | null {
   const moves = ckAllMoves(board, false);
   if (moves.length === 0) return null;
-  // 8% случайных ходов — оставляем окно, чтобы человек мог выиграть
-  if (Math.random() < 0.08) return moves[Math.floor(Math.random() * moves.length)];
+  // 4% случайных ходов
+  if (Math.random() < 0.04) return moves[Math.floor(Math.random() * moves.length)];
 
-  const best = ckMinimax(board, false, 6, -Infinity, Infinity);
-  return best.move ?? moves[0];
+  // Hard: 900мс. Easy на редких случаях — на самой первой доске, где ветвлений много.
+  const TIME_BUDGET_MS = 900;
+  const deadline = Date.now() + TIME_BUDGET_MS;
+
+  let best: CheckerMove = moves[0];
+  // Итеративное углубление: 2, 3, 4, ... до лимита
+  for (let depth = 2; depth <= 10; depth++) {
+    const r = ckMinimax(board, false, depth, -Infinity, Infinity, deadline);
+    if (r.move && Date.now() < deadline) best = r.move;
+    if (Date.now() > deadline) break;
+    // если нашли мат/гарантированную победу — нет смысла глубже
+    if (r.score <= -900 || r.score >= 900) break;
+  }
+  return best;
 }
 
 const CheckersStartSchema = z.object({
