@@ -59,6 +59,7 @@ export const api = {
   getReferrals: () => req<{ link: string; referredCount: number; earnings: string; percent: number }>('/referrals'),
   getDailyStatus: () => req<{ canClaim: boolean; currentStreak: number; nextStreak: number; nextReward: string; streakTable: { day: number; reward: string }[] }>('/daily/status'),
   claimDailyStreak: () => req<{ ok: boolean; reward: string; streak: number; balance: string }>('/daily/claim', { method: 'POST' }),
+  secretStatus: () => req<{ secretUnlocked: boolean }>('/promos/secret-status'),
 };
 
 export type MeResponse = {

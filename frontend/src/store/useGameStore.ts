@@ -10,6 +10,7 @@ export type OwnedGenerator = { id: string; count: number };
 
 type State = {
   ready: boolean;
+  secretUnlocked: boolean;
   balanceRub: number;
   subscriptionUntil: number | null;
   subscriptionActive: boolean;
@@ -46,10 +47,12 @@ type State = {
   setDaily: (streak: number, canClaim: boolean) => void;
   setBanana: (b: { boostUntil: string; cooldownUntil: string }) => void;
   registerTap: () => void;
+  setSecretUnlocked: (v: boolean) => void;
 };
 
 export const useGame = create<State>((set) => ({
   ready: false,
+  secretUnlocked: false,
   balanceRub: 0,
   subscriptionUntil: null,
   subscriptionActive: false,
@@ -125,4 +128,5 @@ export const useGame = create<State>((set) => ({
     totalTaps: s.totalTaps + 1,
     tapsThisSession: s.tapsThisSession + 1,
   })),
+  setSecretUnlocked: (v) => set({ secretUnlocked: v }),
 }));

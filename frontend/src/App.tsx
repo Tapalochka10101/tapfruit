@@ -3,6 +3,7 @@ import { TopBar } from './components/TopBar';
 import { SkinBonus } from './components/SkinBonus';
 import { SubscriptionGate } from './components/SubscriptionGate';
 import { getStartParam } from './lib/telegram';
+import { api } from './lib/api';
 import { SubscriptionInfoSheet } from './components/SubscriptionInfoSheet';
 import { Apple } from './components/Apple';
 import { Particles, type Particle } from './components/Particles';
@@ -15,6 +16,7 @@ import { GeneratorsSheet } from './components/GeneratorsSheet';
 import { PromoSheet } from './components/PromoSheet';
 import { ReferralSheet } from './components/ReferralSheet';
 import { DailyStreakSheet } from './components/DailyStreakSheet';
+import { SecretGamesSheet } from './components/SecretGamesSheet';
 import { BananaBoostButton } from './components/BananaBoostButton';
 import { useGame } from './store/useGameStore';
 import { useSettings } from './store/useSettingsStore';
@@ -49,7 +51,11 @@ export default function App() {
   const sessionIdxRef = useRef(0);
 
   useEffect(() => {
-    init().catch(e => console.error('init failed', e));
+    init()
+      .then(() => api.secretStatus().then(r => {
+        if (r.secretUnlocked) useGame.setState({ secretUnlocked: true });
+      }).catch(() => {}))
+      .catch(e => console.error('init failed', e));
     const start = Date.now();
     const id = setInterval(() => useGame.setState({ playtimeMs: Date.now() - start }), 5000);
     return () => clearInterval(id);
@@ -122,6 +128,7 @@ export default function App() {
   const [refOpen, setRefOpen] = useState(false);
   const [dailyOpen, setDailyOpen] = useState(false);
   const [subscriptionInfoOpen, setSubscriptionInfoOpen] = useState(false);
+  const [secretOpen, setSecretOpen] = useState(false);
 
   return (
     <div
@@ -193,6 +200,14 @@ export default function App() {
 
       <BananaBoostButton />
 
+      {secretUnlocked && (
+        <button
+          onClick={() => setSecretOpen(true)}
+          className="absolute top-3 right-3 z-40 w-11 h-11 rounded-full bg-slate-800/80 text-white text-xl shadow-lg active:scale-95 flex items-center justify-center"
+          aria-label="secret"
+        >🕹</button>
+      )}
+
       <ShopSheet open={shopOpen} onClose={() => setShopOpen(false)} />
       <SettingsSheet
         open={settingsOpen}
@@ -207,6 +222,7 @@ export default function App() {
       <ReferralSheet open={refOpen} onClose={() => setRefOpen(false)} />
       <DailyStreakSheet open={dailyOpen} onClose={() => setDailyOpen(false)} />
       <SubscriptionInfoSheet open={subscriptionInfoOpen} onClose={() => setSubscriptionInfoOpen(false)} />
+      <SecretGamesSheet open={secretOpen} onClose={() => setSecretOpen(false)} />
     </div>
   );
 }
