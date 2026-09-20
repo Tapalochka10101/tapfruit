@@ -473,6 +473,242 @@ minigamesRouter.post('/minigames/durak/defend', async (req, res) => {
   });
 });
 
+
+
+// ===================== ШАШКИ =====================
+// Упрощённые русские шашки 8x8 без дамок. Игрок — 'w' (белые, идут вверх),
+// бот — 'b' (чёрные, идут вниз). Только одиночные взятия.
+
+type CheckerBoard = string[]; // 64 ячейки, '' | 'w' | 'b'
+type CheckersSession = {
+  userId: string;
+  bet: number;
+  board: CheckerBoard;
+  turn: 'player' | 'bot';
+  finished: boolean;
+  status: 'playing' | 'won' | 'lost';
+  startedAt: number;
+};
+
+const checkersSessions = new Map<string, CheckersSession>();
+
+function ckInitBoard(): CheckerBoard {
+  const b: CheckerBoard = new Array(64).fill('');
+  // чёрные сверху (0-23), только тёмные клетки
+  for (let i = 0; i < 24; i++) {
+    const r = Math.floor(i / 8), c = i % 8;
+    if ((r + c) % 2 === 1) b[i] = 'b';
+  }
+  // белые снизу (40-63)
+  for (let i = 40; i < 64; i++) {
+    const r = Math.floor(i / 8), c = i % 8;
+    if ((r + c) % 2 === 1) b[i] = 'w';
+  }
+  return b;
+}
+
+function ckRC(i: number): [number, number] { return [Math.floor(i / 8), i % 8]; }
+function ckIdx(r: number, c: number): number { return r * 8 + c; }
+function ckInb(r: number, c: number): boolean { return r >= 0 && r < 8 && c >= 0 && c < 8; }
+
+/** Возвращает список ходов для фишки: { from, to, capture? } */
+function ckMovesFrom(board: CheckerBoard, from: number, isWhite: boolean): { from: number; to: number; capture?: number }[] {
+  const [r, c] = ckRC(from);
+  const piece = board[from];
+  if (piece === '') return [];
+  const isWhitePiece = piece === 'w';
+  if (isWhitePiece !== isWhite) return [];
+
+  const dirs: [number, number][] = isWhite ? [[-1, -1], [-1, 1]] : [[1, -1], [1, 1]];
+  const result: { from: number; to: number; capture?: number }[] = [];
+
+  for (const [dr, dc] of dirs) {
+    const nr = r + dr, nc = c + dc;
+    if (!ckInb(nr, nc)) continue;
+    const to = ckIdx(nr, nc);
+
+    // обычный ход
+    if (board[to] === '') {
+      result.push({ from, to });
+      continue;
+    }
+    // взятие
+    if (board[to] !== piece) {
+      const jr = r + dr * 2, jc = c + dc * 2;
+      if (ckInb(jr, jc) && board[ckIdx(jr, jc)] === '') {
+        result.push({ from, to: ckIdx(jr, jc), capture: to });
+      }
+    }
+  }
+  return result;
+}
+
+function ckAllMoves(board: CheckerBoard, isWhite: boolean): { from: number; to: number; capture?: number }[] {
+  const all: { from: number; to: number; capture?: number }[] = [];
+  for (let i = 0; i < 64; i++) {
+    if (board[i] === (isWhite ? 'w' : 'b')) {
+      all.push(...ckMovesFrom(board, i, isWhite));
+    }
+  }
+  // по правилам, если есть взятия — только они
+  const captures = all.filter(m => m.capture !== undefined);
+  return captures.length > 0 ? captures : all;
+}
+
+function ckApplyMove(board: CheckerBoard, m: { from: number; to: number; capture?: number }): CheckerBoard {
+  const next = [...board];
+  const piece = next[m.from];
+  next[m.from] = '';
+  if (m.capture !== undefined) next[m.capture] = '';
+  next[m.to] = piece;
+  return next;
+}
+
+function ckEvaluate(board: CheckerBoard): number {
+  // + за белые (игрок), - за чёрные (бот)
+  let score = 0;
+  for (let i = 0; i < 64; i++) {
+    const p = board[i];
+    if (p === 'w') score += 1;
+    else if (p === 'b') score -= 1;
+  }
+  return score;
+}
+
+function ckMinimax(board: CheckerBoard, isWhite: boolean, depth: number): { score: number; move?: { from: number; to: number; capture?: number } } {
+  const moves = ckAllMoves(board, isWhite);
+  if (moves.length === 0) {
+    // нет ходов — проигрыш текущего
+    return { score: isWhite ? -1000 : 1000 };
+  }
+  if (depth === 0) return { score: ckEvaluate(board) };
+
+  let best: { score: number; move?: { from: number; to: number; capture?: number } } = isWhite
+    ? { score: -Infinity }
+    : { score: Infinity };
+
+  for (const m of moves) {
+    const nb = ckApplyMove(board, m);
+    const r = ckMinimax(nb, !isWhite, depth - 1);
+    if (isWhite) {
+      if (r.score > best.score) best = { score: r.score, move: m };
+    } else {
+      if (r.score < best.score) best = { score: r.score, move: m };
+    }
+  }
+  return best;
+}
+
+function ckBotMove(board: CheckerBoard): { from: number; to: number; capture?: number } | null {
+  const moves = ckAllMoves(board, false); // чёрные
+  if (moves.length === 0) return null;
+
+  // 30% ошибок — случайный ход
+  const MISTAKE = 0.30;
+  if (Math.random() < MISTAKE) {
+    return moves[Math.floor(Math.random() * moves.length)];
+  }
+  const best = ckMinimax(board, false, 4);
+  return best.move ?? moves[0];
+}
+
+const CheckersStartSchema = z.object({
+  bet: z.number().int().min(MIN_BET).max(MAX_BET),
+});
+
+minigamesRouter.post('/minigames/checkers/start', async (req, res) => {
+  const parsed = CheckersStartSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'bad_payload' });
+  const { bet } = parsed.data;
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
+  if (user.chips < BigInt(bet)) return res.status(400).json({ error: 'insufficient_chips' });
+
+  const board = ckInitBoard();
+  // 50/50 кто первый
+  const playerFirst = Math.random() < 0.5;
+  let finalBoard = board;
+  if (!playerFirst) {
+    const botMove = ckBotMove(board);
+    if (botMove) finalBoard = ckApplyMove(board, botMove);
+  }
+
+  const sessionId = newSessionId();
+  checkersSessions.set(sessionId, {
+    userId: req.userId!,
+    bet,
+    board: finalBoard,
+    turn: 'player',
+    finished: false,
+    status: 'playing',
+    startedAt: Date.now(),
+  });
+
+  const updated = await prisma.user.update({
+    where: { id: user.id },
+    data: { chips: { decrement: BigInt(bet) } },
+  });
+
+  res.json({
+    ok: true,
+    sessionId,
+    board: finalBoard,
+    chips: updated.chips.toString(),
+  });
+});
+
+const CheckersMoveSchema = z.object({
+  sessionId: z.string(),
+  from: z.number().int().min(0).max(63),
+  to: z.number().int().min(0).max(63),
+});
+
+minigamesRouter.post('/minigames/checkers/move', async (req, res) => {
+  const parsed = CheckersMoveSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'bad_payload' });
+  const { sessionId, from, to } = parsed.data;
+  const s = checkersSessions.get(sessionId);
+  if (!s) return res.status(404).json({ error: 'session_not_found' });
+  if (s.userId !== req.userId!) return res.status(403).json({ error: 'forbidden' });
+  if (s.finished) return res.status(400).json({ error: 'finished' });
+
+  const legal = ckAllMoves(s.board, true);
+  const move = legal.find(m => m.from === from && m.to === to);
+  if (!move) return res.status(400).json({ error: 'illegal_move' });
+
+  s.board = ckApplyMove(s.board, move);
+
+  // проверка победы игрока
+  const botMoves = ckAllMoves(s.board, false);
+  if (botMoves.length === 0) {
+    s.finished = true;
+    s.status = 'won';
+    const reward = BigInt(s.bet * 2);
+    const u = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
+    const upd = await prisma.user.update({
+      where: { id: u.id },
+      data: { chips: { increment: reward } },
+    });
+    checkersSessions.delete(sessionId);
+    return res.json({ ok: true, board: s.board, status: 'won', chips: upd.chips.toString() });
+  }
+
+  // ход бота
+  const botMove = ckBotMove(s.board);
+  if (botMove) s.board = ckApplyMove(s.board, botMove);
+
+  // проверка проигрыша игрока
+  const playerMoves = ckAllMoves(s.board, true);
+  if (playerMoves.length === 0) {
+    s.finished = true;
+    s.status = 'lost';
+    const u = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
+    checkersSessions.delete(sessionId);
+    return res.json({ ok: true, board: s.board, status: 'lost', chips: u.chips.toString() });
+  }
+
+  res.json({ ok: true, board: s.board, status: 'playing' });
+});
+
 minigamesRouter.get('/minigames/me', async (req, res) => {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
   res.json({
