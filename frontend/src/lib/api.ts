@@ -60,6 +60,12 @@ export const api = {
   getDailyStatus: () => req<{ canClaim: boolean; currentStreak: number; nextStreak: number; nextReward: string; streakTable: { day: number; reward: string }[] }>('/daily/status'),
   claimDailyStreak: () => req<{ ok: boolean; reward: string; streak: number; balance: string }>('/daily/claim', { method: 'POST' }),
   secretStatus: () => req<{ secretUnlocked: boolean }>('/promos/secret-status'),
+  durakStart: (bet: number) =>
+    req<any>('/minigames/durak/start', { method: 'POST', body: JSON.stringify({ bet }) }),
+  durakAttack: (sessionId: string, cardIndex: number) =>
+    req<any>('/minigames/durak/attack', { method: 'POST', body: JSON.stringify({ sessionId, cardIndex }) }),
+  durakDefend: (sessionId: string, cardIndex: number | null) =>
+    req<any>('/minigames/durak/defend', { method: 'POST', body: JSON.stringify({ sessionId, cardIndex }) }),
 };
 
 export type MeResponse = {
