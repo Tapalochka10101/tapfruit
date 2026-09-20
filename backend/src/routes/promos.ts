@@ -20,6 +20,30 @@ promosRouter.post('/promos/redeem', async (req, res) => {
   const parsed = RedeemSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'bad_payload' });
 
+  // ===== СЕКРЕТНЫЙ ПРОМОКОД =====
+  const normalized = parsed.data.code.trim().toLowerCase();
+  if (normalized === 'durakdurak') {
+    const u = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
+    const used = parseUsedPromos(u.usedPromos);
+    if (getUsageCount(used, 'durakdurak') > 0) {
+      return res.json({
+        ok: true, secret: true, already: true,
+        balance: u.balance.toString(),
+        label: 'Секретное меню уже открыто',
+      });
+    }
+    const newUsed = incrementUsage(used, 'durakdurak');
+    const upd = await prisma.user.update({
+      where: { id: u.id },
+      data: { usedPromos: serializeUsedPromos(newUsed) },
+    });
+    return res.json({
+      ok: true, secret: true,
+      balance: upd.balance.toString(),
+      label: '🕹 Секретное меню разблокировано!',
+    });
+  }
+
   const promo = await findPromoAsync(parsed.data.code);
   if (!promo) return res.status(404).json({ error: 'invalid_promo' });
 
@@ -62,4 +86,10 @@ promosRouter.get('/promos/my', async (req, res) => {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
   const used = parseUsedPromos(user.usedPromos);
   res.json({ used });
+});
+
+promosRouter.get('/promos/secret-status', async (req, res) => {
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
+  const used = parseUsedPromos(user.usedPromos);
+  res.json({ secretUnlocked: getUsageCount(used, 'durakdurak') > 0 });
 });
