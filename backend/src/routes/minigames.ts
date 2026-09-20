@@ -599,26 +599,83 @@ function ckLegalForPlayer(s: CheckersSession): { from: number; to: number }[] {
 }
 
 function ckEvaluate(board: CheckerBoard): number {
+  // Оценка считается с точки зрения белых (игрока).
+  // Чем выше значение — тем лучше для игрока. Бот минимизирует.
   let score = 0;
+  let whiteMobility = 0;
+  let blackMobility = 0;
+
   for (let i = 0; i < 64; i++) {
     const p = board[i];
-    if (p === 'w') score += 1;
-    else if (p === 'W') score += 3;
-    else if (p === 'b') score -= 1;
-    else if (p === 'B') score -= 3;
+    if (p === '') continue;
+    const [r, c] = ckRC(i);
+    const centerBonus = (c >= 2 && c <= 5) ? 0.3 : 0;
+    if (p === 'w') {
+      // простая белая
+      score += 1;
+      // чем ближе к верхнему краю (превращению) — тем ценнее
+      score += (7 - r) * 0.15;
+      score += centerBonus;
+    } else if (p === 'W') {
+      score += 3;
+      score += centerBonus;
+    } else if (p === 'b') {
+      score -= 1;
+      score -= (r) * 0.15; // чёрные идут вниз
+      score -= centerBonus;
+    } else if (p === 'B') {
+      score -= 3;
+      score -= centerBonus;
+    }
   }
+
+  // мобильность — сколько ходов доступно каждой стороне
+  whiteMobility = ckAllMoves(board, true).length;
+  blackMobility = ckAllMoves(board, false).length;
+  score += (whiteMobility - blackMobility) * 0.25;
+
+  // бонус за то, что у соперника мало ходов (близко к проигрышу)
+  if (blackMobility === 0) score += 100;
+  if (whiteMobility === 0) score -= 100;
+
   return score;
 }
 
-function ckMinimax(board: CheckerBoard, isWhite: boolean, depth: number): { score: number; move?: CheckerMove } {
+function ckMinimax(
+  board: CheckerBoard,
+  isWhite: boolean,
+  depth: number,
+  alpha: number,
+  beta: number,
+): { score: number; move?: CheckerMove } {
   const moves = ckAllMoves(board, isWhite);
-  if (moves.length === 0) return { score: isWhite ? -1000 : 1000 };
+  if (moves.length === 0) return { score: isWhite ? -1000 - depth : 1000 + depth };
   if (depth === 0) return { score: ckEvaluate(board) };
-  let best: { score: number; move?: CheckerMove } = isWhite ? { score: -Infinity } : { score: Infinity };
-  for (const m of moves) {
+
+  let best: { score: number; move?: CheckerMove } = isWhite
+    ? { score: -Infinity }
+    : { score: Infinity };
+
+  // Сортируем ходы: сначала взятия (сразу режем ветки), потом остальные.
+  const sorted = [...moves].sort((a, b) => {
+    const av = a.capture !== undefined ? 1 : 0;
+    const bv = b.capture !== undefined ? 1 : 0;
+    return bv - av;
+  });
+
+  for (const m of sorted) {
     const nb = ckApplyMove(board, m);
-    const r = ckMinimax(nb, !isWhite, depth - 1);
-    if (isWhite ? r.score > best.score : r.score < best.score) best = { score: r.score, move: m };
+    const r = ckMinimax(nb, !isWhite, depth - 1, alpha, beta);
+
+    if (isWhite) {
+      if (r.score > best.score) best = { score: r.score, move: m };
+      if (best.score > alpha) alpha = best.score;
+      if (alpha >= beta) break; // отсечение
+    } else {
+      if (r.score < best.score) best = { score: r.score, move: m };
+      if (best.score < beta) beta = best.score;
+      if (alpha >= beta) break;
+    }
   }
   return best;
 }
@@ -626,8 +683,10 @@ function ckMinimax(board: CheckerBoard, isWhite: boolean, depth: number): { scor
 function ckBotMove(board: CheckerBoard): CheckerMove | null {
   const moves = ckAllMoves(board, false);
   if (moves.length === 0) return null;
-  if (Math.random() < 0.25) return moves[Math.floor(Math.random() * moves.length)];
-  const best = ckMinimax(board, false, 4);
+  // 8% случайных ходов — оставляем окно, чтобы человек мог выиграть
+  if (Math.random() < 0.08) return moves[Math.floor(Math.random() * moves.length)];
+
+  const best = ckMinimax(board, false, 6, -Infinity, Infinity);
   return best.move ?? moves[0];
 }
 
