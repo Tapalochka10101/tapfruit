@@ -30,13 +30,14 @@ const GAMES: Game[] = [
 
 const BETS = [10, 50, 100, 500, 5000];
 const CHIP_PACKS = [10, 100, 1000];
-const TAPS_PER_CHIP = 100;
+const TAPS_PER_CHIP = 500;
 
 type Result = { won: boolean; detail: string; roll: string; visual?: string; bet: number; choice: string };
 
 export function MinigamesSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [bet, setBet] = useState(10);
+  const [betInput, setBetInput] = useState('10');
   const [playing, setPlaying] = useState(false);
   const [lastResult, setLastResult] = useState<Result | null>(null);
   const [history, setHistory] = useState<Result[]>([]);
@@ -286,43 +287,22 @@ export function MinigamesSheet({ open, onClose }: { open: boolean; onClose: () =
             </div>
 
             <div>
-              <div className="text-xs text-[var(--tg-hint)] mb-2 text-center">Ставка</div>
-              <div className="flex items-center gap-2 mb-2">
-                <button
-                  onClick={() => setBet(b => Math.max(10, b - 10))}
-                  className="w-10 h-10 rounded-xl bg-[var(--tg-card)] font-black text-lg active:scale-95"
-                >−</button>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={bet}
-                  onChange={e => {
-                    const v = Number(e.target.value.replace(/\D/g, '')) || 0;
-                    setBet(Math.min(v, chips));
-                  }}
-                  className="flex-1 py-3 rounded-xl bg-[var(--tg-card)] text-center font-black text-lg tabular-nums"
-                />
-                <button
-                  onClick={() => setBet(b => Math.min(chips, b + 10))}
-                  className="w-10 h-10 rounded-xl bg-[var(--tg-card)] font-black text-lg active:scale-95"
-                >+</button>
-              </div>
-              <div className="grid grid-cols-5 gap-1.5">
-                {[10, 50, 100, 500, 5000].map(b => (
-                  <button
-                    key={b}
-                    onClick={() => setBet(Math.min(b, chips))}
-                    disabled={chips < 10}
-                    className={`py-2 rounded-xl font-bold text-xs transition ${
-                      bet === b
-                        ? 'bg-brand text-white'
-                        : 'bg-[var(--tg-card)]'
-                    }`}
-                  >{b >= 1000 ? (b/1000) + 'к' : b}</button>
-                ))}
-              </div>
+              <div className="text-xs text-[var(--tg-hint)] mb-2 text-center">Количество</div>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={betInput}
+                onChange={e => {
+                  const raw = e.target.value.replace(/\D/g, '').slice(0, 9);
+                  setBetInput(raw);
+                  const v = Number(raw) || 0;
+                  setBet(Math.min(v, chips));
+                }}
+                placeholder="0"
+                className="w-full py-4 rounded-2xl bg-[var(--tg-card)] text-center font-black text-2xl tabular-nums"
+              />
               <div className="text-[10px] text-[var(--tg-hint)] text-center mt-1">
-                макс: {fmt(chips)}
+                доступно: {fmt(chips)} 🪙
               </div>
             </div>
 
@@ -404,7 +384,7 @@ export function MinigamesSheet({ open, onClose }: { open: boolean; onClose: () =
                         wordState.finished === 'won' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
                       }`}>
                         <div className="text-2xl mb-1">
-                          {wordState.finished === 'won' ? '🎉 ПОБЕДА! ×2' : '😢 Проиграл'}
+                          {wordState.finished === 'won' ? '🎉 ПОБЕДА! +100%' : '😢 Проиграл'}
                         </div>
                         <div className="text-sm opacity-90">Слово: {wordState.word}</div>
                       </div>
@@ -453,7 +433,7 @@ export function MinigamesSheet({ open, onClose }: { open: boolean; onClose: () =
                         : tttState.status === 'lost' ? 'bg-red-500 text-white'
                         : 'bg-yellow-500 text-white'
                       }`}>
-                        {tttState.status === 'won' ? '🎉 ПОБЕДА! ×2'
+                        {tttState.status === 'won' ? '🎉 ПОБЕДА! +100%'
                           : tttState.status === 'lost' ? '😢 Проиграл'
                           : '🤝 Ничья — ставка возвращена'}
                       </div>
@@ -487,7 +467,7 @@ export function MinigamesSheet({ open, onClose }: { open: boolean; onClose: () =
                       )}
                       <div className="text-2xl mb-1">
                         {lastResult.won
-                          ? '🎉 ВЫИГРАЛ +' + lastResult.bet * 2
+                          ? '🎉 +100% = +' + lastResult.bet
                           : '😢 Проиграл −' + lastResult.bet}
                       </div>
                       <div className="text-sm opacity-90 font-semibold">{lastResult.detail}</div>
